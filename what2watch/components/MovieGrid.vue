@@ -6,7 +6,7 @@
           <div class="card h-100 shadow">
             <img 
               :src="movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image'" 
-              class="card-img-top" 
+              class="card-img-top p-2" 
               :alt="movie.title"
             >
             <div class="card-body">
