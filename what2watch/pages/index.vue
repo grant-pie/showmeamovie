@@ -8,30 +8,82 @@ let dropdowns = ref({
     genre: {activeItem: null,values: [], options: {}},
     rating: {activeItem: null, values: [], options: {}},
     year: {activeItem: null, values: [], options: {}},
-    language: {activeItem: null, values: [], options: {underlineFirstItem: true}}
+    language: {activeItem: null, values: [], options: {underlineFirstItem: true}},
+    sort: {activeItem: null,  values: [
+    "Popularity Ascending",
+    "Popularity Descending",
+    "Revenue Ascending",
+    "Revenue Descending",
+    "Release Date Ascending",
+    "Release Date Descending",
+    "Rating Ascending",
+    "Rating Descending",
+    "Vote Count Ascending",
+    "Vote Count Descending",
+    "Title (A-Z)",
+    "Title (Z-A)"
+    ],options: {}}
 });
-let movies = ref([
-{
-  adult: false,
-  backdrop_path: "/bVm6udIB6iKsRqgMdQh6HywuEBj.jpg",
-  genre_ids: [53, 28],
-  id: 1233069,
-  original_language: "de",
-  original_title: "Exterritorial",
-  overview: "When her son vanishes inside a US consulate, ex-special forces soldier Sara does everything in her power to find him — and uncovers a dark conspiracy.",
-  popularity: 599.2458,
-  poster_path: "/jM2uqCZNKbiyStyzXOERpMqAbdx.jpg",
-  release_date: "2025-04-29",
-  title: "Exterritorial",
-  video: false,
-  vote_average: 6.727,
-  vote_count: 214
-}
-]);
+const sortOptions = [
+  {
+    name: "Popularity Ascending",
+    value: "popularity.asc"
+  },
+  {
+    name: "Popularity Descending",
+    value: "popularity.desc"
+  },
+  {
+    name: "Revenue Ascending",
+    value: "revenue.asc"
+  },
+  {
+    name: "Revenue Descending",
+    value: "revenue.desc"
+  },
+  {
+    name: "Release Date Ascending",
+    value: "primary_release_date.asc"
+  },
+  {
+    name: "Release Date Descending",
+    value: "primary_release_date.desc"
+  },
+  {
+    name: "Rating Ascending",
+    value: "vote_average.asc"
+  },
+  {
+    name: "Rating Descending",
+    value: "vote_average.desc"
+  },
+  {
+    name: "Vote Count Ascending",
+    value: "vote_count.asc"
+  },
+  {
+    name: "Vote Count Descending",
+    value: "vote_count.desc"
+  },
+  {
+    name: "Title (A-Z)",
+    value: "original_title.asc"
+  },
+  {
+    name: "Title (Z-A)",
+    value: "original_title.desc"
+  }
+];
+let moviesLoaded = ref(false);
+let movies = ref([]);
 let totalPages = ref(0);
 let currentPage = ref(1);
 
+const apiKey = useRuntimeConfig().public.apiKey
+
+
 onMounted(() => {
+
     //get genres
     getMovieGenres();
 
@@ -49,6 +101,7 @@ onMounted(() => {
 
     //get langauges
     getLanguages();
+
 });
 
 watch(genres, (genres) => {
@@ -64,17 +117,12 @@ watch(languages, (language) => {
             dropdowns.value.language.values.push(language.english_name);
         }
     });
+
 });
 
 watch(currentPage, (currentPage) => {
-    console.log(currentPage)
-});
-
-watch(movies, (movies) => {
     getMovies();
 });
-
-
 
 async function getMovieGenres() {
     const url = 'https://api.themoviedb.org/3/genre/movie/list?language=en';
@@ -82,7 +130,7 @@ async function getMovieGenres() {
     method: 'GET',
     headers: {
         accept: 'application/json',
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwMmZlYzc5ODA3YzNkNWVmOGM2OThkY2FjZTI2OGIyMyIsIm5iZiI6MTYwMDk1MTMwNy45MDYsInN1YiI6IjVmNmM5NDBiY2VlMmY2MDAzNjQxYzVlZiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Uo0PjGmvNiC6LLKEqOvcjeeebuCQq93TSlrtSR-eRYI'
+        Authorization: 'Bearer ' + apiKey
     }
     };
 
@@ -94,7 +142,7 @@ async function getMovieGenres() {
 
 async function getLanguages() {
     const url = 'https://api.themoviedb.org/3/configuration/languages';
-    const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwMmZlYzc5ODA3YzNkNWVmOGM2OThkY2FjZTI2OGIyMyIsIm5iZiI6MTYwMDk1MTMwNy45MDYsInN1YiI6IjVmNmM5NDBiY2VlMmY2MDAzNjQxYzVlZiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Uo0PjGmvNiC6LLKEqOvcjeeebuCQq93TSlrtSR-eRYI'}};
+    const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer ' + apiKey}};
 
     fetch(url, options)
     .then(res => res.json())
@@ -155,32 +203,40 @@ async function getMovies(){
 
     //langauge
     if(dropdowns.value.language.activeItem != null){
-        const language = languages.value.find((element) => element.name ===  dropdowns.value.language.activeItem);
+        const language = languages.value.find((element) => element.english_name ===  dropdowns.value.language.activeItem);
         const languageURLAppend = language.iso_639_1;
-        url+='&language=' + languageURLAppend;
+        url+='&with_original_language=' + languageURLAppend;
     }
 
-    const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwMmZlYzc5ODA3YzNkNWVmOGM2OThkY2FjZTI2OGIyMyIsIm5iZiI6MTYwMDk1MTMwNy45MDYsInN1YiI6IjVmNmM5NDBiY2VlMmY2MDAzNjQxYzVlZiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.Uo0PjGmvNiC6LLKEqOvcjeeebuCQq93TSlrtSR-eRYI'}};
-    console.log(url);
+    //sorting
+    if(dropdowns.value.sort.activeItem != null){
+        const sortBy = sortOptions.find((element) => element.name ===  dropdowns.value.sort.activeItem);
+        const genreURLAppend = sortBy.value;
+        url+='&sort_by=' + genreURLAppend;
+
+    }
+
+    const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer ' + apiKey}};
+
     fetch(url, options)
     .then(res => res.json())
-    .then((json) => { movies.value = json.results; totalPages.value = json.total_pages; })
+    .then((json) => { movies.value = json.results; totalPages.value = json.total_pages; moviesLoaded.value = true; console.log(moviesLoaded.value)})
     .catch(err => console.error(err));
     }
 
 </script>
 
 <template>
-   
-    <section
-    class="mx-5"
-    >
-
-        <div class="card">
+  
+    <section>
+        <div class="bg-primary d-flex justify-content-center p-2">
+            <img src="/assets/logo.png" alt="" width="200" height="102" class="d-inline-block align-text-top">
+        </div>
+        <div>
             <form>
 
                 <!--dropdowns-->
-                <div class="d-flex">
+                <div class="d-flex justify-content-center my-5">
 
                     <div v-for="(values, key) in dropdowns" :key="key" class="dropdown me-2">
                         <button 
@@ -223,21 +279,39 @@ async function getMovies(){
             </form>
 
             <!--results-->
-            <div>
+            <div
+            v-show="movies.length > 0"
+            >
                 <MovieGrid
                 :movies="movies"
                 />
                 
                 <!--pagination-->
-                <Paginator
-                :total-pages = totalPages
-                v-model="currentPage" 
-                />
+                <div class="d-flex justify-content-center mt-5">
+                    <Paginator
+                    :total-pages = totalPages
+                    v-model="currentPage" 
+                    />
+                </div>
             </div>
-      
-
+            <div
+            class="justify-content-center mt-5"
+            :class="movies.length === 0 && moviesLoaded ? 'd-flex' : 'd-none'"
+            >
+                <p>No movies found, please refine your search paramaters...</p>
+            </div>
+            <div
+         
+            class="justify-content-center mt-5"
+            :class="!moviesLoaded ? 'd-flex' : 'd-none'"
+            >
+                <p>Set search parameters and click discover!</p>
+            </div>
         </div>
-        
+
+        <div class="bg-primary mt-5 d-flex justify-content-center p-2">
+            <img src="/assets/logo.png" alt="" width="100" height="51" class="d-inline-block align-text-top">
+        </div>
     </section>
 
 </template>

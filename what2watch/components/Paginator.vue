@@ -15,10 +15,11 @@
       >1</button>
       
       <!-- Left ellipsis -->
-      <span 
+      <button 
         v-if="showLeftEllipsis"
-        class="rounded p-2 bg-primary me-1"
-      >...</span>
+        class="btn btn-primary me-1"
+        disabled
+      >...</button>
       
       <!-- Middle pages -->
       <button
@@ -30,10 +31,11 @@
       >{{ index }}</button>
       
       <!-- Right ellipsis -->
-      <span 
+      <button 
         v-if="showRightEllipsis"
-        class="rounded p-2 bg-primary me-1"
-      >...</span>
+        class="btn btn-primary me-1"
+        disabled
+      >...</button>
       
       <!-- Last page -->
       <button

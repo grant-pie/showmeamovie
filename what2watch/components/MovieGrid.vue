@@ -19,7 +19,7 @@
                 </span>
                 <small class="text-muted">{{ movie.vote_count }} votes</small>
               </div>
-              <p class="card-text small" style="height: 4.5rem; overflow: hidden; text-overflow: ellipsis;">
+              <p class="card-text small" style="height: 4.5rem; overflow-y: scroll; text-overflow: ellipsis;">
                 {{ movie.overview }}
               </p>
             </div>
@@ -102,6 +102,6 @@
   }
   .card-img-top {
     height: 300px;
-    object-fit: cover;
+    object-fit: contain;
   }
   </style>
