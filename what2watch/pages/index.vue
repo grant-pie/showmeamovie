@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 
+const route = useRoute();
+const router = useRouter();
 
 let genres = ref([]);
 let languages = ref([]);
@@ -108,6 +110,9 @@ watch(genres, (genres) => {
     genres.forEach((genre)=>{
         dropdowns.value.genre.values.push(genre.name);
     });
+    
+    // After genres are loaded, restore from URL
+    restoreFromURL();
 });
 
 watch(languages, (language) => {
@@ -117,12 +122,121 @@ watch(languages, (language) => {
             dropdowns.value.language.values.push(language.english_name);
         }
     });
-
+    
+    // After languages are loaded, restore from URL
+    restoreFromURL();
 });
 
-watch(currentPage, (currentPage) => {
+watch(currentPage, (newPage) => {
+    updateURL();
     getMovies();
 });
+
+// Watch for changes in dropdown selections
+watch(() => dropdowns.value.genre.activeItem, () => {
+    currentPage.value = 1; // Reset to page 1 when filters change
+    updateURL();
+    getMovies();
+});
+
+watch(() => dropdowns.value.rating.activeItem, () => {
+    currentPage.value = 1;
+    updateURL();
+    getMovies();
+});
+
+watch(() => dropdowns.value.year.activeItem, () => {
+    currentPage.value = 1;
+    updateURL();
+    getMovies();
+});
+
+watch(() => dropdowns.value.language.activeItem, () => {
+    currentPage.value = 1;
+    updateURL();
+    getMovies();
+});
+
+watch(() => dropdowns.value.sort.activeItem, () => {
+    currentPage.value = 1;
+    updateURL();
+    getMovies();
+});
+
+// Function to update URL with current filter state
+function updateURL() {
+    const query = {
+        page: currentPage.value.toString()
+    };
+    
+    if (dropdowns.value.genre.activeItem) {
+        query.genre = dropdowns.value.genre.activeItem;
+    }
+    
+    if (dropdowns.value.rating.activeItem) {
+        query.rating = dropdowns.value.rating.activeItem;
+    }
+    
+    if (dropdowns.value.year.activeItem) {
+        query.year = dropdowns.value.year.activeItem;
+    }
+    
+    if (dropdowns.value.language.activeItem) {
+        query.language = dropdowns.value.language.activeItem;
+    }
+    
+    if (dropdowns.value.sort.activeItem) {
+        query.sort = dropdowns.value.sort.activeItem;
+    }
+    
+    // Update URL without reloading the page
+    router.push({ query });
+}
+
+// Function to restore state from URL
+function restoreFromURL() {
+    // Only restore if data is loaded
+    if (genres.value.length === 0 || languages.value.length === 0) {
+        return;
+    }
+    
+    const query = route.query;
+    
+    // Restore page
+    if (query.page) {
+        currentPage.value = parseInt(query.page);
+    }
+    
+    // Restore genre
+    if (query.genre && dropdowns.value.genre.values.includes(query.genre)) {
+        dropdowns.value.genre.activeItem = query.genre;
+    }
+    
+    // Restore rating
+    if (query.rating && dropdowns.value.rating.values.includes(query.rating)) {
+        dropdowns.value.rating.activeItem = query.rating;
+    }
+    
+    // Restore year
+    if (query.year && dropdowns.value.year.values.includes(query.year)) {
+        dropdowns.value.year.activeItem = query.year;
+    }
+    
+    // Restore language
+    if (query.language && dropdowns.value.language.values.includes(query.language)) {
+        dropdowns.value.language.activeItem = query.language;
+    }
+    
+    // Restore sort
+    if (query.sort && dropdowns.value.sort.values.includes(query.sort)) {
+        dropdowns.value.sort.activeItem = query.sort;
+    }
+    
+    // Fetch movies with restored filters
+    if (Object.keys(query).length > 0) {
+        getMovies();
+    }
+}
 
 async function getMovieGenres() {
     const url = 'https://api.themoviedb.org/3/genre/movie/list?language=en';
@@ -224,6 +338,12 @@ async function getMovies(){
     .catch(err => console.error(err));
 }
 
+// Function to handle dropdown selection
+function handleDropdownSelect(key, item) {
+    dropdowns.value[key].activeItem = item;
+    // The watchers will handle the rest (updating URL and fetching movies)
+}
+
 </script>
 
 <template>
@@ -259,7 +379,7 @@ async function getMovies(){
                             :key="item" 
                             class="dropdown-item"
                             :class="index === 0 && values.options.underlineFirstItem ? 'border-info border-bottom' : ''"
-                            @click="values.activeItem = values.values[index]; getMovies()"
+                            @click="handleDropdownSelect(key, values.values[index])"
   
                             >
                                 {{ item }}
