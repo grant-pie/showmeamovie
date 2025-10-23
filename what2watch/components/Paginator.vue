@@ -1,57 +1,3 @@
-<template>
-    <div>
-      <button 
-        v-show="currentPage > 1"
-        class="btn btn-primary me-1"
-        @click="currentPage > 1 ? currentPage-- : currentPage = totalPages"
-      >Previous</button>
-      
-      <!-- First page -->
-      <button
-        v-if="totalPages > 0"
-        class="btn me-1"
-        :class="currentPage != 1 ? 'btn-primary' : 'border border-dark'"
-        @click="currentPage = 1"
-      >1</button>
-      
-      <!-- Left ellipsis -->
-      <button 
-        v-if="showLeftEllipsis"
-        class="btn btn-primary me-1"
-        disabled
-      >...</button>
-      
-      <!-- Middle pages -->
-      <button
-        v-for="index in middlePages"
-        :key="index"
-        class="btn me-1"
-        :class="currentPage != index ? 'btn-primary' : 'border border-dark'"
-        @click="currentPage = index"
-      >{{ index }}</button>
-      
-      <!-- Right ellipsis -->
-      <button 
-        v-if="showRightEllipsis"
-        class="btn btn-primary me-1"
-        disabled
-      >...</button>
-      
-      <!-- Last page -->
-      <button
-        v-if="totalPages > 1"
-        class="btn me-1"
-        :class="currentPage != totalPages ? 'btn-primary' : 'border border-dark'"
-        @click="currentPage = totalPages"
-      >{{ totalPages }}</button>
-      
-      <button 
-        v-show="currentPage < totalPages"
-        class="btn btn-primary me-1"
-        @click="currentPage < totalPages ? currentPage++ : currentPage = 1"
-      >Next</button>
-    </div>
-  </template>
   
   <script setup>
   import { ref, computed } from 'vue';
@@ -126,3 +72,58 @@
       middlePages.value[middlePages.value.length - 1] < props.totalPages - 1;
   });
   </script>
+
+<template>
+    <div>
+      <button 
+        v-show="currentPage > 1"
+        class="btn btn-primary me-1"
+        @click="currentPage > 1 ? currentPage-- : currentPage = totalPages"
+      >Previous</button>
+      
+      <!-- First page -->
+      <button
+        v-if="totalPages > 0"
+        class="btn me-1"
+        :class="currentPage != 1 ? 'btn-primary' : 'border border-dark'"
+        @click="currentPage = 1"
+      >1</button>
+      
+      <!-- Left ellipsis -->
+      <button 
+        v-if="showLeftEllipsis"
+        class="btn btn-primary me-1"
+        disabled
+      >...</button>
+      
+      <!-- Middle pages -->
+      <button
+        v-for="index in middlePages"
+        :key="index"
+        class="btn me-1"
+        :class="currentPage != index ? 'btn-primary' : 'border border-dark'"
+        @click="currentPage = index"
+      >{{ index }}</button>
+      
+      <!-- Right ellipsis -->
+      <button 
+        v-if="showRightEllipsis"
+        class="btn btn-primary me-1"
+        disabled
+      >...</button>
+      
+      <!-- Last page -->
+      <button
+        v-if="totalPages > 1"
+        class="btn me-1"
+        :class="currentPage != totalPages ? 'btn-primary' : 'border border-dark'"
+        @click="currentPage = totalPages"
+      >{{ totalPages }}</button>
+      
+      <button 
+        v-show="currentPage < totalPages"
+        class="btn btn-primary me-1"
+        @click="currentPage < totalPages ? currentPage++ : currentPage = 1"
+      >Next</button>
+    </div>
+</template>

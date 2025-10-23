@@ -181,7 +181,7 @@ async function getMovies(){
         const genreURLAppend = genre.id;
         url+='&with_genres=' + genreURLAppend;
     }
-    
+
     //rating
     if(dropdowns.value.rating.activeItem != null){
         const ratingURLAppend = dropdowns.value.rating.activeItem.includes('+') ? dropdowns.value.rating.activeItem.replace('+', '') : dropdowns.value.rating.activeItem
@@ -222,7 +222,7 @@ async function getMovies(){
     .then(res => res.json())
     .then((json) => { movies.value = json.results; totalPages.value = json.total_pages; moviesLoaded.value = true; console.log(moviesLoaded.value)})
     .catch(err => console.error(err));
-    }
+}
 
 </script>
 
@@ -231,11 +231,6 @@ async function getMovies(){
     <section
     class="d-flex flex-column min-vh-100"
     >
-        <!--navbar-->
-        <div class="bg-primary d-flex justify-content-center p-2">
-            <img src="/assets/logo.png" alt="" width="200" height="102" class="d-inline-block align-text-top">
-        </div>
-        <!--navbar end-->
 
         <!--content-->
         <div>
@@ -264,7 +259,8 @@ async function getMovies(){
                             :key="item" 
                             class="dropdown-item"
                             :class="index === 0 && values.options.underlineFirstItem ? 'border-info border-bottom' : ''"
-                            @click="values.activeItem = values.values[index]"
+                            @click="values.activeItem = values.values[index]; getMovies()"
+  
                             >
                                 {{ item }}
 
@@ -274,8 +270,6 @@ async function getMovies(){
 
                 
                     </div>
-
-                    <div @click="getMovies" class="btn btn-primary ">Discover</div>
 
                 </div>
                 
@@ -290,10 +284,11 @@ async function getMovies(){
             >
                 <MovieGrid
                 :movies="movies"
+                :genres="genres"
                 />
                 
                 <!--pagination-->
-                <div class="d-flex justify-content-center mt-5">
+                <div class="d-flex justify-content-center my-5">
                     <Paginator
                     :total-pages = totalPages
                     v-model="currentPage" 
@@ -307,7 +302,7 @@ async function getMovies(){
                 <p>No movies found, please refine your search paramaters...</p>
             </div>
             <div
-         
+            
             class="justify-content-center mt-5"
             :class="!moviesLoaded ? 'd-flex' : 'd-none'"
             >
@@ -316,11 +311,7 @@ async function getMovies(){
         </div>
         <!--content end-->
 
-        <!--footer-->
-        <div class="bg-primary mt-5 d-flex justify-content-center mt-auto p-2">
-            <img src="/assets/logo.png" alt="" width="100" height="51" class="d-inline-block align-text-top">
-        </div>
-        <!--footer end-->
+
 
     </section>
 

@@ -12,5 +12,6 @@ export default defineNuxtConfig({
     public: {
       apiKey: process.env.NUXT_API_KEY
     }
-  }
+  },
+  modules: ['nuxt-icon']
 })
