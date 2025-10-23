@@ -4,6 +4,7 @@ const route = useRoute()
 const movie = ref({
     release_date: '',
     origin_country: [''],
+    videos: { results: [] },
 })
 const credits = ref({
     crew : [],
@@ -11,15 +12,35 @@ const credits = ref({
 });
 const languages = ref([]);
 const consolidatedCrew = ref({});
+const watchProviders = ref({});
 const apiKey = useRuntimeConfig().public.apiKey
+const isVideoOpen = ref(false);
+
+const openVideo = () => {
+  isVideoOpen.value = true;
+};
+
+const onVideoClose = () => {
+  console.log('Video player closed');
+};
 
 async function getMovie(id){
-    const url = `https://api.themoviedb.org/3/movie/${id}?append_to_response=release_dates`;
+    const url = `https://api.themoviedb.org/3/movie/${id}?append_to_response=release_dates,videos`;
     const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer ' + apiKey}};
 
     fetch(url, options)
     .then(res => res.json())
     .then((json) => { movie.value = json; console.log(movie.value); })
+    .catch(err => console.error(err));
+}
+
+async function getWatchProviders(id){
+    const url = `https://api.themoviedb.org/3/movie/${id}/watch/providers`;
+    const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer ' + apiKey}};
+
+    fetch(url, options)
+    .then(res => res.json())
+    .then((json) => { watchProviders.value = json; console.log(watchProviders.value); })
     .catch(err => console.error(err));
 }
 
@@ -83,9 +104,6 @@ function findCertification(movie) {
   return releaseWithCert?.certification || null;
 }
 
-// Usage:
-const certification = findCertification(movie);
-
 function convertMinutesToHoursAndMinutes(totalMinutes) {
   // Return empty string or handle invalid input
   if (totalMinutes == null || totalMinutes < 0) return '';
@@ -111,7 +129,6 @@ function convertMinutesToHoursAndMinutes(totalMinutes) {
   
   return result;
 }
-
 
 function consolidateCrew(crew) {
   if (!crew || !Array.isArray(crew)) {
@@ -169,6 +186,7 @@ onMounted(async () => {
     console.log('No crew data available');
     }
     getLanguages();
+    getWatchProviders(id)
 });
 </script>
 
@@ -213,11 +231,20 @@ onMounted(async () => {
                 :rating="Math.trunc(movie.vote_average * 10)"
                 />
                
-                <div class="align-self-center">
-                    <button class="btn btn-primary ms-5 d-flex align-items-center gap-2">
+                <div 
+                v-if="movie.videos.results.length > 0"
+                class="align-self-center">
+                    <button
+                    @click="openVideo"
+                    class="btn btn-primary ms-5 d-flex align-items-center gap-2">
                     <Icon class="fs-2" name="mdi:play" />
                     Play Trailer
                     </button>
+                    <video-player
+                      v-model="isVideoOpen"
+                      :url="movie.videos.results[0].site === 'YouTube' ? `https://www.youtube.com/embed/${movie.videos.results[0].key}` : ''"
+                      @close="onVideoClose"
+                    />
                 </div>
               
             </div>
