@@ -136,13 +136,13 @@ function consolidateCrew(crew) {
     return {};
   }
   
-  const allowedDepartments = ['Directing', 'Writing'];
+  const allowedJobs = ['Director', 'Screenplay'];
   
   return crew.reduce((acc, member) => {
-    const { name, department } = member;
+    const { name, job } = member;
     
-    // Only include allowed departments
-    if (!allowedDepartments.includes(department)) {
+    // Only include allowed jobs
+    if (!allowedJobs.includes(job)) {
       return acc;
     }
     
@@ -150,8 +150,8 @@ function consolidateCrew(crew) {
       acc[name] = [];
     }
     
-    if (!acc[name].includes(department)) {
-      acc[name].push(department);
+    if (!acc[name].includes(job)) {
+      acc[name].push(job);
     }
     
     return acc;
@@ -170,6 +170,14 @@ function formatPrice(price) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(price);
+}
+
+function getTrailerUrl(videos) {
+  const trailer = videos.find(video => 
+    video.name.toLowerCase().includes('trailer') && 
+    video.site === 'YouTube'
+  );
+  return trailer ? `https://www.youtube.com/embed/${trailer.key}` : '';
 }
 
 onMounted(async () => {
@@ -242,7 +250,7 @@ onMounted(async () => {
                     </button>
                     <video-player
                       v-model="isVideoOpen"
-                      :url="movie.videos.results[0].site === 'YouTube' ? `https://www.youtube.com/embed/${movie.videos.results[0].key}` : ''"
+                      :url="getTrailerUrl(movie.videos.results)"
                       @close="onVideoClose"
                     />
                 </div>
