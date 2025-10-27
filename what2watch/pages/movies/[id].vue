@@ -100,8 +100,8 @@ function findCertification(movie) {
   const releaseWithCert = release.release_dates.find(
     release => release.certification
   );
-  
-  return releaseWithCert?.certification || null;
+
+  return releaseWithCert?.certification || 'NR';
 }
 
 function convertMinutesToHoursAndMinutes(totalMinutes) {

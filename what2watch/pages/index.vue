@@ -4,9 +4,9 @@ import { ref, onMounted, watch } from 'vue'
 const route = useRoute();
 const router = useRouter();
 
-let genres = ref([]);
-let languages = ref([]);
-let dropdowns = ref({
+const genres = ref([]);
+const languages = ref([]);
+const dropdowns = ref({
     genre: {activeItem: null,values: [], options: {}},
     rating: {activeItem: null, values: [], options: {}},
     year: {activeItem: null, values: [], options: {}},
@@ -76,20 +76,28 @@ const sortOptions = [
     value: "original_title.desc"
   }
 ];
-let moviesLoaded = ref(false);
-let movies = ref([]);
-let totalPages = ref(0);
-let currentPage = ref(1);
+
+const moviesLoaded = ref(false);
+const movies = ref([]);
+const totalPages = ref(0);
+const currentPage = ref(1);
+
+// Loading and error states
+const isLoadingMovies = ref(false);
+const isLoadingGenres = ref(false);
+const isLoadingLanguages = ref(false);
+const errorMessage = ref(null);
+const genresError = ref(null);
+const languagesError = ref(null);
 
 const apiKey = useRuntimeConfig().public.apiKey
 
 
 onMounted(() => {
-
-    //get genres
+    // Get genres
     getMovieGenres();
 
-    //populate rating
+    // Populate rating
     for(let i=0; i<=9; i++){
         if(i < 9){
             dropdowns.value.rating.values.push(i+1+'+');
@@ -98,12 +106,11 @@ onMounted(() => {
         }
     }
 
-    //calculate years
+    // Calculate years
     calcYears();
 
-    //get langauges
+    // Get languages
     getLanguages();
-
 });
 
 watch(genres, (genres) => {
@@ -239,109 +246,202 @@ function restoreFromURL() {
 }
 
 async function getMovieGenres() {
+    isLoadingGenres.value = true;
+    genresError.value = null;
+    
     const url = 'https://api.themoviedb.org/3/genre/movie/list?language=en';
     const options = {
-    method: 'GET',
-    headers: {
-        accept: 'application/json',
-        Authorization: 'Bearer ' + apiKey
-    }
+        method: 'GET',
+        headers: {
+            accept: 'application/json',
+            Authorization: 'Bearer ' + apiKey
+        }
     };
 
-    fetch(url, options)
-    .then(res => res.json())
-    .then(json => genres.value = json.genres)
-    .catch(err => console.error(err));
+    try {
+        const response = await fetch(url, options);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Invalid API key. Please check your configuration.');
+            } else if (response.status === 404) {
+                throw new Error('Genres endpoint not found.');
+            } else {
+                throw new Error(`Failed to fetch genres. Status: ${response.status}`);
+            }
+        }
+        
+        const json = await response.json();
+        genres.value = json.genres;
+    } catch (err) {
+        genresError.value = err.message || 'Failed to load movie genres. Please try again later.';
+        console.error('Error fetching genres:', err);
+    } finally {
+        isLoadingGenres.value = false;
+    }
 }
 
 async function getLanguages() {
+    isLoadingLanguages.value = true;
+    languagesError.value = null;
+    
     const url = 'https://api.themoviedb.org/3/configuration/languages';
-    const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer ' + apiKey}};
+    const options = {
+        method: 'GET', 
+        headers: {
+            accept: 'application/json', 
+            Authorization: 'Bearer ' + apiKey
+        }
+    };
 
-    fetch(url, options)
-    .then(res => res.json())
-    .then(json => languages.value=json)
-    .catch(err => console.error(err));
+    try {
+        const response = await fetch(url, options);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Invalid API key. Please check your configuration.');
+            } else if (response.status === 404) {
+                throw new Error('Languages endpoint not found.');
+            } else {
+                throw new Error(`Failed to fetch languages. Status: ${response.status}`);
+            }
+        }
+        
+        const json = await response.json();
+        languages.value = json;
+    } catch (err) {
+        languagesError.value = err.message || 'Failed to load languages. Please try again later.';
+        console.error('Error fetching languages:', err);
+    } finally {
+        isLoadingLanguages.value = false;
+    }
 }
 
 function calcYears(){
-    //get year ranges
+    // Get year ranges
     const currentYear = parseInt(new Date().getFullYear());
 
-    //push first year range
+    // Push first year range
     dropdowns.value.year.values.push('All');
-
     dropdowns.value.year.values.push('<1950' );
 
     for(let i = 1950; i <= currentYear; i = i + 10) {
-
         dropdowns.value.year.values.push( i.toString() + '-' + (i + 9).toString() );
     }
-
 
     dropdowns.value.year.values.push( 'Latest' );
 }
 
 async function getMovies(){
-    //calc url
-    let url = 'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false?';
+    isLoadingMovies.value = true;
+    errorMessage.value = null;
+    
+    try {
+        // Calc url
+        let url = 'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false?';
 
-    //page
-    url+= '&page=' + currentPage.value;
+        // Page
+        url+= '&page=' + currentPage.value;
 
-    //genre
-    if(dropdowns.value.genre.activeItem != null){
-        const genre = genres.value.find((element) => element.name ===  dropdowns.value.genre.activeItem);
-        const genreURLAppend = genre.id;
-        url+='&with_genres=' + genreURLAppend;
-    }
-
-    //rating
-    if(dropdowns.value.rating.activeItem != null){
-        const ratingURLAppend = dropdowns.value.rating.activeItem.includes('+') ? dropdowns.value.rating.activeItem.replace('+', '') : dropdowns.value.rating.activeItem
-        url+='&vote_average.gte=' + ratingURLAppend
-    }
-
-    //year
-    if(dropdowns.value.year.activeItem != null){
-        let yearURLAppend = '';
-
-        if(dropdowns.value.year.activeItem.includes('<1950')){
-            yearURLAppend = '&release_date.lte=1950-12-31'
-        } else {
-            yearURLAppend ='&primary_release_date.gte=' + dropdowns.value.year.activeItem.substring(0, dropdowns.value.year.activeItem.search('-')) + '-01-31';
-            yearURLAppend +='&primary_release_date.lte=' + dropdowns.value.year.activeItem.substring(dropdowns.value.year.activeItem.search('-') + 1) + '-12-31';
+        // Genre
+        if(dropdowns.value.genre.activeItem != null){
+            const genre = genres.value.find((element) => element.name ===  dropdowns.value.genre.activeItem);
+            if (genre) {
+                const genreURLAppend = genre.id;
+                url+='&with_genres=' + genreURLAppend;
+            }
         }
-        url += yearURLAppend;
+
+        // Rating
+        if(dropdowns.value.rating.activeItem != null){
+            const ratingURLAppend = dropdowns.value.rating.activeItem.includes('+') ? dropdowns.value.rating.activeItem.replace('+', '') : dropdowns.value.rating.activeItem
+            url+='&vote_average.gte=' + ratingURLAppend
+        }
+
+        // Year
+        if(dropdowns.value.year.activeItem != null){
+            let yearURLAppend = '';
+
+            if(dropdowns.value.year.activeItem.includes('<1950')){
+                yearURLAppend = '&release_date.lte=1950-12-31'
+            } else {
+                yearURLAppend ='&primary_release_date.gte=' + dropdowns.value.year.activeItem.substring(0, dropdowns.value.year.activeItem.search('-')) + '-01-31';
+                yearURLAppend +='&primary_release_date.lte=' + dropdowns.value.year.activeItem.substring(dropdowns.value.year.activeItem.search('-') + 1) + '-12-31';
+            }
+            url += yearURLAppend;
+        }
+
+        // Language
+        if(dropdowns.value.language.activeItem != null){
+            const language = languages.value.find((element) => element.english_name ===  dropdowns.value.language.activeItem);
+            if (language) {
+                const languageURLAppend = language.iso_639_1;
+                url+='&with_original_language=' + languageURLAppend;
+            }
+        }
+
+        // Sorting
+        if(dropdowns.value.sort.activeItem != null){
+            const sortBy = sortOptions.find((element) => element.name ===  dropdowns.value.sort.activeItem);
+            if (sortBy) {
+                const sortURLAppend = sortBy.value;
+                url+='&sort_by=' + sortURLAppend;
+            }
+        }
+
+        const options = {
+            method: 'GET', 
+            headers: {
+                accept: 'application/json', 
+                Authorization: 'Bearer ' + apiKey
+            }
+        };
+
+        const response = await fetch(url, options);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Invalid API key. Please check your configuration.');
+            } else if (response.status === 422) {
+                throw new Error('Invalid search parameters. Please adjust your filters and try again.');
+            } else if (response.status === 429) {
+                throw new Error('Too many requests. Please wait a moment and try again.');
+            } else if (response.status === 404) {
+                throw new Error('Movies endpoint not found.');
+            } else {
+                throw new Error(`Failed to fetch movies. Status: ${response.status}`);
+            }
+        }
+        
+        const json = await response.json();
+        movies.value = json.results || [];
+        totalPages.value = json.total_pages || 0;
+        moviesLoaded.value = true;
+    } catch (err) {
+        errorMessage.value = err.message || 'Failed to load movies. Please check your connection and try again.';
+        console.error('Error fetching movies:', err);
+        movies.value = [];
+        totalPages.value = 0;
+    } finally {
+        isLoadingMovies.value = false;
     }
-
-    //langauge
-    if(dropdowns.value.language.activeItem != null){
-        const language = languages.value.find((element) => element.english_name ===  dropdowns.value.language.activeItem);
-        const languageURLAppend = language.iso_639_1;
-        url+='&with_original_language=' + languageURLAppend;
-    }
-
-    //sorting
-    if(dropdowns.value.sort.activeItem != null){
-        const sortBy = sortOptions.find((element) => element.name ===  dropdowns.value.sort.activeItem);
-        const genreURLAppend = sortBy.value;
-        url+='&sort_by=' + genreURLAppend;
-
-    }
-
-    const options = {method: 'GET', headers: {accept: 'application/json', Authorization: 'Bearer ' + apiKey}};
-
-    fetch(url, options)
-    .then(res => res.json())
-    .then((json) => { movies.value = json.results; totalPages.value = json.total_pages; moviesLoaded.value = true; console.log(moviesLoaded.value)})
-    .catch(err => console.error(err));
 }
 
 // Function to handle dropdown selection
 function handleDropdownSelect(key, item) {
     dropdowns.value[key].activeItem = item;
     // The watchers will handle the rest (updating URL and fetching movies)
+}
+
+// Function to retry failed requests
+function retryFailedRequest(type) {
+    if (type === 'genres') {
+        getMovieGenres();
+    } else if (type === 'languages') {
+        getLanguages();
+    } else if (type === 'movies') {
+        getMovies();
+    }
 }
 
 </script>
@@ -354,6 +454,24 @@ function handleDropdownSelect(key, item) {
 
         <!--content-->
         <div>
+            <!-- Error alerts for initial data loading -->
+            <div v-if="genresError || languagesError" class="container mt-4">
+                <div v-if="genresError" class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Error loading genres:</strong> {{ genresError }}
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-3" @click="retryFailedRequest('genres')">
+                        Retry
+                    </button>
+                    <button type="button" class="btn-close" @click="genresError = null" aria-label="Close"></button>
+                </div>
+                <div v-if="languagesError" class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Error loading languages:</strong> {{ languagesError }}
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-3" @click="retryFailedRequest('languages')">
+                        Retry
+                    </button>
+                    <button type="button" class="btn-close" @click="languagesError = null" aria-label="Close"></button>
+                </div>
+            </div>
+
             <form>
 
                 <!--dropdowns-->
@@ -366,6 +484,7 @@ function handleDropdownSelect(key, item) {
                         :id="`dropdownMenu${key.charAt(0).toUpperCase() + key.slice(1)}Btn`" 
                         data-bs-toggle="dropdown" 
                         aria-expanded="false"
+                        :disabled="(key === 'genre' && isLoadingGenres) || (key === 'language' && isLoadingLanguages)"
                         >
                         {{ values.activeItem === null ? key.charAt(0).toUpperCase() + key.slice(1) : values.activeItem }}
                         </button>
@@ -392,15 +511,30 @@ function handleDropdownSelect(key, item) {
                     </div>
 
                 </div>
-                
-                <!--order by dropdown-->
-
 
             </form>
 
+            <!-- Error message for movies -->
+            <div v-if="errorMessage" class="container">
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Error:</strong> {{ errorMessage }}
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-3" @click="retryFailedRequest('movies')">
+                        Retry
+                    </button>
+                    <button type="button" class="btn-close" @click="errorMessage = null" aria-label="Close"></button>
+                </div>
+            </div>
+
+            <!-- Loading spinner -->
+            <div v-if="isLoadingMovies" class="d-flex justify-content-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading movies...</span>
+                </div>
+            </div>
+
             <!--results-->
             <div
-            v-show="movies.length > 0"
+            v-show="movies.length > 0 && !isLoadingMovies"
             >
                 <MovieGrid
                 :movies="movies"
@@ -417,16 +551,15 @@ function handleDropdownSelect(key, item) {
             </div>
             <div
             class="justify-content-center mt-5"
-            :class="movies.length === 0 && moviesLoaded ? 'd-flex' : 'd-none'"
+            :class="movies.length === 0 && moviesLoaded && !isLoadingMovies && !errorMessage ? 'd-flex' : 'd-none'"
             >
-                <p>No movies found, please refine your search paramaters...</p>
+                <p>No movies found, please refine your search parameters...</p>
             </div>
             <div
-            
             class="justify-content-center mt-5"
-            :class="!moviesLoaded ? 'd-flex' : 'd-none'"
+            :class="!moviesLoaded && !isLoadingMovies && !errorMessage ? 'd-flex' : 'd-none'"
             >
-                <p>Set search parameters and click discover!</p>
+                <p>Select your filters above to discover movies!</p>
             </div>
         </div>
         <!--content end-->
