@@ -113,6 +113,13 @@ onMounted(() => {
     getLanguages();
 });
 
+// Watch totalPages to ensure currentPage doesn't exceed it
+watch(totalPages, (newTotal) => {
+    if (newTotal > 0 && currentPage.value > newTotal) {
+        currentPage.value = newTotal;
+    }
+});
+
 watch(genres, (genres) => {
     genres.forEach((genre)=>{
         dropdowns.value.genre.values.push(genre.name);
@@ -134,7 +141,25 @@ watch(languages, (language) => {
     restoreFromURL();
 });
 
-watch(currentPage, (newPage) => {
+watch(currentPage, (newPage, oldPage) => {
+    // Bounds checking for pagination
+    if (newPage < 1) {
+        currentPage.value = 1;
+        return;
+    }
+    
+    // If we have totalPages loaded and newPage exceeds it, cap at totalPages
+    if (totalPages.value > 0 && newPage > totalPages.value) {
+        currentPage.value = totalPages.value;
+        return;
+    }
+    
+    // TMDB API has a max limit of 500 pages
+    if (newPage > 500) {
+        currentPage.value = 500;
+        return;
+    }
+    
     updateURL();
     getMovies();
 });
@@ -209,9 +234,19 @@ function restoreFromURL() {
     
     const query = route.query;
     
-    // Restore page
+    // Restore page with validation
     if (query.page) {
-        currentPage.value = parseInt(query.page);
+        let pageNum = parseInt(query.page);
+        
+        // Validate page number
+        if (isNaN(pageNum) || pageNum < 1) {
+            pageNum = 1;
+        } else if (pageNum > 500) {
+            // TMDB API max limit
+            pageNum = 500;
+        }
+        
+        currentPage.value = pageNum;
     }
     
     // Restore genre
@@ -335,7 +370,8 @@ function calcYears(){
 async function getMovies(){
     isLoadingMovies.value = true;
     errorMessage.value = null;
-    
+    console.log('Fetching movies with current filters...');
+    console.log({dropdowns: dropdowns.value, currentPage: currentPage.value});
     try {
         // Calc url
         let url = 'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false?';
