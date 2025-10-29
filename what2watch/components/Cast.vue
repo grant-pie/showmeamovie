@@ -7,6 +7,8 @@ const props = defineProps({
   }
 });
 
+const profileLoaded = ref(false);
+
 const getProfileImage = (profilePath) => {
   if (profilePath) {
     return `https://image.tmdb.org/t/p/w185${profilePath}`;
@@ -21,11 +23,18 @@ const getProfileImage = (profilePath) => {
     <div class="cast-scroll">
       <div v-for="member in cast" :key="member.cast_id" class="cast-card">
         <div class="card h-100">
-          <img 
+          <div 
+          class="blur-load"
+          :class="profileLoaded ? 'loaded' : ''" 
+          >
+            <img 
             :src="getProfileImage(member.profile_path)" 
             class="card-img-top" 
             :alt="`${member.name} as ${member.character}`"
+            loading="lazy"
+            @load="profileLoaded = true"
           />
+          </div>
           <div class="card-body">
             <h5 class="card-title">{{ member.name }}</h5>
             <p class="card-text text-muted">{{ member.character }}</p>
@@ -96,4 +105,52 @@ const getProfileImage = (profilePath) => {
 .card-text {
   font-size: 0.8rem;
 }
+
+img{
+    width: 100%;
+    aspect-ratio: 1/1.5;
+    display: block;
+    object-position: center;
+    object-fit: cover;
+}
+
+.blur-load::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    animation: pulse 2.5s infinite;
+    background-color: rgba(255, 255, 255, 1);
+}
+
+.blur-load.loaded::before{
+    content: none;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.blur-load {
+    background-image: url(_nuxt/assets/Image-Loading-Placeholder.png);
+    background-size: cover;
+    background-position: center;
+}
+
+.blur-load > img {
+    opacity: 1!important;
+}
+
+.blur-load > img {
+    opacity: 0;
+    transition: opacity 200ms ease-in-out;
+}
+
 </style>

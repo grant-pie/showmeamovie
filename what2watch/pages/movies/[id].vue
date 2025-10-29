@@ -36,6 +36,8 @@ const showBackToTop = ref(false);
 const screenReaderAnnouncement = ref('');
 const playTrailerButtonRef = ref(null);
 
+const posterLoaded = ref(false);
+
 const openVideo = () => {
   isVideoOpen.value = true;
   screenReaderAnnouncement.value = 'Video player opened. Press Escape to close.';
@@ -72,10 +74,11 @@ const handleGlobalKeydown = (e) => {
 
 // Open watch provider (currently just opens TMDB, but can be customized)
 const openWatchProvider = (provider) => {
-  // You can customize this to link to the actual provider if TMDB provides URLs
-  // For now, it opens TMDB with provider info
-  window.open(`https://www.themoviedb.org/`, '_blank', 'noopener,noreferrer');
-  screenReaderAnnouncement.value = `Opening ${provider.provider_name} in a new tab`;
+    console.log('Opening watch provider:', provider);
+    // You can customize this to link to the actual provider if TMDB provides URLs
+    // For now, it opens TMDB with provider info
+    window.open(`https://www.themoviedb.org/`, '_blank', 'noopener,noreferrer');
+    screenReaderAnnouncement.value = `Opening ${provider.provider_name} in a new tab`;
 };
 
 // Handle image load errors
@@ -140,7 +143,7 @@ async function getMovie(id){
         
         const json = await response.json();
         movie.value = json;
-        
+        console.log('Movie data:', json);
         // Announce movie title to screen readers
         screenReaderAnnouncement.value = `Movie loaded: ${json.title}`;
         
@@ -565,6 +568,7 @@ onUnmounted(() => {
             @error="handleBackdropError"
             style="display: none;"
             aria-hidden="true"
+            loading="lazy"
         >
         
         <section 
@@ -575,12 +579,18 @@ onUnmounted(() => {
         >
 
             <div class="card col-4">
-                <img  
-                    :src="getPosterUrl"
-                    :alt="`${movie.title} movie poster`"
-                    loading="lazy"
-                    @error="handlePosterError"
+                <div
+                class="blur-load"
+                :class="posterLoaded ? 'loaded' : ''"
                 >
+                    <img  
+                        :src="getPosterUrl"
+                        :alt="`${movie.title} movie poster`"
+                        loading="lazy"
+                        @error="handlePosterError"
+                        @load="posterLoaded = true"
+                    >
+                </div>
             </div>
 
             <div class="col-8 ms-4 text-light">
@@ -611,16 +621,19 @@ onUnmounted(() => {
 
                 </div>
 
-                <div class="mt-4 d-flex align-items-center flex-wrap gap-3">
+                <div class="mt-4 d-flex align-items-center flex-wrap gap-5">
                     <div class="d-flex flex-column">
                         <rating-circle
+                        v-if="movie.vote_count"
                         :rating="Math.trunc(movie.vote_average * 10)"
                         aria-label="User rating"
                         />
-                        <span class="small text-light mt-1 text-center">
+                        <span class="small text-light mt-1 text-center"
+                        v-if="movie.vote_count"
+                        >
                             User Score
                         </span>
-                        <span v-if="movie.vote_count" class="text-muted" style="font-size: 0.75rem; text-align: center;">
+                        <span class="text-muted" style="font-size: 0.75rem; text-align: center;">
                             {{ movie.vote_count.toLocaleString() }} votes
                         </span>
                     </div>
@@ -1028,6 +1041,53 @@ a:focus-visible {
 
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+img{
+    width: 100%;
+    aspect-ratio: 1/1.5;
+    display: block;
+    object-position: center;
+    object-fit: cover;
+}
+
+.blur-load::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    animation: pulse 2.5s infinite;
+    background-color: rgba(255, 255, 255, 1);
+}
+
+.blur-load.loaded::before{
+    content: none;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.blur-load {
+    background-image: url(_nuxt/assets/Image-Loading-Placeholder.png);
+    background-size: cover;
+    background-position: center;
+}
+
+.blur-load > img {
+    opacity: 1!important;
+}
+
+.blur-load > img {
+    opacity: 0;
+    transition: opacity 200ms ease-in-out;
 }
 
 </style>

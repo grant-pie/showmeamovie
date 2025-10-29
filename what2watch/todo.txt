@@ -1,0 +1,12 @@
+
+-> watch providers links
+-> lazy load imgs
+-> page refresh loads wrong content and url 
+-> component aria labels
+-> component keyboard nav
+-> component semantic html
+-> component loaders
+-> Nuxt image module?
+-> different browsers
+-> mobile
+-> test ograph

@@ -626,7 +626,7 @@ async function getMovies(){
         
         const json = await response.json();
         movies.value = json.results || [];
-        totalPages.value = json.total_pages || 0;
+        totalPages.value = json.total_pages > 500 ? 500 : json.total_pages; // TMDB API max limit is 500 pages
         moviesLoaded.value = true;
         
         // Announce results to screen readers

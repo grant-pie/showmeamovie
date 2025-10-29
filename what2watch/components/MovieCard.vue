@@ -12,6 +12,8 @@ const props = defineProps({
   }
 });
 
+const imgLoaded = ref(false);
+
 function formatDate(dateString) {
     if (!dateString) return 'Unknown';
         const date = new Date(dateString);
@@ -39,11 +41,16 @@ function navigateToMovie() {
     @click="navigateToMovie"
     >
 
-        <img 
-        :src="movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '_nuxt/assets/No-Image-Placeholder.png'" 
-        class="card-img-top p-2" 
-        :alt="movie.title"
-        >
+        <div class="blur-load"
+        :class="imgLoaded ? 'loaded' : ''" >
+            <img 
+            :src="movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '_nuxt/assets/No-Image-Placeholder.png'" 
+            class="card-img-top p-2"
+            :alt="movie.title"
+            loading="lazy"
+            @load="imgLoaded = true"
+            >
+        </div>
 
         <div class="card-body">
             <h5 class="card-title">{{ movie.title }}</h5>
@@ -83,5 +90,53 @@ function navigateToMovie() {
     overflow-y: scroll; 
     text-overflow: ellipsis;
 }
+
+img{
+    width: 100%;
+    aspect-ratio: 1/1.5;
+    display: block;
+    object-position: center;
+    object-fit: cover;
+}
+
+.blur-load::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    animation: pulse 2.5s infinite;
+    background-color: rgba(255, 255, 255, 1);
+}
+
+.blur-load.loaded::before{
+    content: none;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.blur-load {
+    background-image: url(_nuxt/assets/Image-Loading-Placeholder.png);
+    background-size: cover;
+    background-position: center;
+}
+
+.blur-load > img {
+    opacity: 1!important;
+}
+
+.blur-load > img {
+    opacity: 0;
+    transition: opacity 200ms ease-in-out;
+}
+
 
 </style>
