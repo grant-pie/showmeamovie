@@ -1,6 +1,5 @@
-
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 
 const props = defineProps({
   url: {
@@ -70,6 +69,13 @@ watch(() => props.modelValue, (newValue) => {
 // Watch isOpen to emit changes
 watch(isOpen, (newValue) => {
   emit('update:modelValue', newValue);
+  
+  // Manage body scroll and focus trap
+  if (newValue) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
 });
 
 const closePlayer = () => {
@@ -80,6 +86,22 @@ const closePlayer = () => {
   emit('close');
 };
 
+// Handle Escape key to close
+const handleKeyDown = (event) => {
+  if (event.key === 'Escape' && isOpen.value) {
+    closePlayer();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeyDown);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeyDown);
+  document.body.style.overflow = '';
+});
+
 // Expose methods for parent component if needed
 defineExpose({
   closePlayer
@@ -89,10 +111,37 @@ defineExpose({
 <template>
   <Teleport to="body">
     <Transition name="fade">
-      <div v-if="isOpen" class="video-overlay" @click="closePlayer">
-        <div class="video-container" @click.stop>
-          <button class="close-button" @click="closePlayer" aria-label="Close video">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div 
+        v-if="isOpen" 
+        class="video-overlay" 
+        role="dialog"
+        aria-modal="true"
+        aria-label="Video player"
+        @click="closePlayer"
+      >
+        <div 
+          class="video-container" 
+          @click.stop
+        >
+          <button 
+            class="close-button" 
+            type="button"
+            aria-label="Close video player"
+            @click="closePlayer"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round"
+              aria-hidden="true"
+              focusable="false"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -107,6 +156,7 @@ defineExpose({
             frameborder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowfullscreen
+            :title="'Video player'"
           ></iframe>
           
           <!-- For direct video files -->
@@ -117,7 +167,7 @@ defineExpose({
             controls
             autoplay
             class="video-player"
-
+            :aria-label="'Video content'"
           >
             Your browser does not support the video tag.
           </video>
@@ -126,7 +176,6 @@ defineExpose({
     </Transition>
   </Teleport>
 </template>
-
 
 <style scoped>
 .video-overlay {

@@ -1,7 +1,3 @@
-
--> watch providers links
--> lazy load imgs
--> page refresh loads wrong content and url 
 -> component aria labels
 -> component keyboard nav
 -> component semantic html
@@ -10,3 +6,5 @@
 -> different browsers
 -> mobile
 -> test ograph
+-> watch providers links
+-> assets fix

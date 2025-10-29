@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 
 const route = useRoute();
 const router = useRouter();
@@ -103,7 +103,6 @@ const isRestoringFromURL = ref(false);
 const screenReaderAnnouncement = ref('');
 
 // Refs for keyboard navigation and focus management
-const dropdownRefs = ref({});
 const focusedDropdownKey = ref(null);
 const focusedItemIndex = ref(-1);
 
@@ -225,26 +224,12 @@ watch([
 
 // Watch totalPages to ensure currentPage doesn't exceed it
 watch(totalPages, (newTotal) => {
+
     if (newTotal > 0 && currentPage.value > newTotal) {
         currentPage.value = newTotal;
     }
 });
 
-// Helper function to safely set page number
-function setPageNumber(pageNum) {
-    // Validate and sanitize page number
-    let validPage = parseInt(pageNum);
-    
-    if (isNaN(validPage) || validPage < 1) {
-        validPage = 1;
-    } else if (validPage > 500) {
-        validPage = 500; // TMDB API max limit
-    } else if (totalPages.value > 0 && validPage > totalPages.value) {
-        validPage = totalPages.value;
-    }
-    
-    currentPage.value = validPage;
-}
 
 // Debounced function to handle filter changes
 // This prevents multiple rapid API calls when filters change
@@ -286,14 +271,19 @@ watch(languages, (language) => {
 });
 
 watch(currentPage, (newPage, oldPage) => {
+    // Don't trigger during URL restoration
+    if (isRestoringFromURL.value) return;
+    
     // Bounds checking for pagination
     if (newPage < 1) {
+
         currentPage.value = 1;
         return;
     }
     
     // If we have totalPages loaded and newPage exceeds it, cap at totalPages
     if (totalPages.value > 0 && newPage > totalPages.value) {
+        console.log('exceed')
         currentPage.value = totalPages.value;
         return;
     }
@@ -306,6 +296,7 @@ watch(currentPage, (newPage, oldPage) => {
     
     updateURL();
     getMovies();
+    console.log(`Page changed from ${oldPage} to ${newPage}`)
 });
 
 // Watch for changes in dropdown selections - use debouncing to prevent redundant calls
@@ -404,7 +395,7 @@ function restoreFromURL() {
         
         currentPage.value = pageNum;
     }
-    
+  
     // Track if we're restoring filters (to trigger only one API call)
     let filtersRestored = false;
     
@@ -438,9 +429,6 @@ function restoreFromURL() {
         filtersRestored = true;
     }
     
-    // Clear restoration flag before making API call
-    isRestoringFromURL.value = false;
-    
     // Fetch movies with restored filters - only once after all filters are set
     if (filtersRestored || query.page) {
         // Clear any pending debounced calls
@@ -448,9 +436,15 @@ function restoreFromURL() {
             clearTimeout(filterDebounceTimer.value);
         }
         // Call immediately without debounce for initial load
-        updateURL();
+        // Don't call updateURL() here since we're restoring FROM the URL
         getMovies();
     }
+    
+    // Use nextTick to clear the flag AFTER all watchers have processed
+    // This prevents watchers from firing after we've finished restoration
+    nextTick(() => {
+        isRestoringFromURL.value = false;
+    });
     
     // Update meta tags after restoration
     updateMetaTags();
@@ -544,6 +538,7 @@ function calcYears(){
 }
 
 async function getMovies(){
+    console.log('Fetching movies with current filters...');
     isLoadingMovies.value = true;
     errorMessage.value = null;
     

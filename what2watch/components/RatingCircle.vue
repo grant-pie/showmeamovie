@@ -1,4 +1,3 @@
-
 <script setup>
 import { computed } from 'vue';
 
@@ -33,11 +32,24 @@ const dashOffset = computed(() => {
   return circumference.value * (1 - progress);
 });
 const fontSize = computed(() => props.size / 5);
+
+// Provide descriptive text for screen readers
+const ratingDescription = computed(() => {
+  if (props.rating >= 70) return 'High rating';
+  if (props.rating >= 40) return 'Average rating';
+  return 'Low rating';
+});
 </script>
 
 <template>
-  <div class="rating-circle">
-    <svg :width="size" :height="size" viewBox="0 0 100 100">
+  <figure class="rating-circle" role="img" :aria-label="`${ratingDescription}: ${rating} percent`">
+    <svg 
+      :width="size" 
+      :height="size" 
+      viewBox="0 0 100 100"
+      aria-hidden="true"
+      focusable="false"
+    >
       <!-- Background circle (red) -->
       <circle
         cx="50"
@@ -71,18 +83,35 @@ const fontSize = computed(() => props.size / 5);
         :font-size="fontSize"
         font-weight="bold"
         :fill="progressColor"
+        aria-hidden="true"
       >
         {{ rating }}%
       </text>
     </svg>
-  </div>
+    <figcaption class="visually-hidden">
+      Rating: {{ rating }} out of 100
+    </figcaption>
+  </figure>
 </template>
 
 <style scoped>
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 .rating-circle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  margin: 0;
 }
 
 svg {

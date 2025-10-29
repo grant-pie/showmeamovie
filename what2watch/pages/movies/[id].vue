@@ -1076,7 +1076,7 @@ img{
 }
 
 .blur-load {
-    background-image: url(_nuxt/assets/Image-Loading-Placeholder.png);
+    background-image: url(../_nuxt/assets/Image-Loading-Placeholder.png);
     background-size: cover;
     background-position: center;
 }
