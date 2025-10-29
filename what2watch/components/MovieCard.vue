@@ -1,5 +1,6 @@
-import { ref } from 'vue';
 <script setup>
+import { useRouter } from 'vue-router';
+const router = useRouter();
 const props = defineProps({
     movie: {
         type: Object,
@@ -27,9 +28,8 @@ function getGenreName(genreId) {
 }
 
 function navigateToMovie() {
-    // Assuming you have a router setup
-    // Navigate to movie detail page
-    window.location.href = `/movies/${props.movie.id}`;
+
+    router.push(`/movies/${props.movie.id}`);
 }
 </script>
 
@@ -40,7 +40,7 @@ function navigateToMovie() {
     >
 
         <img 
-        :src="movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '/assets/No-Image-Placeholder.png'" 
+        :src="movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '_nuxt/assets/No-Image-Placeholder.png'" 
         class="card-img-top p-2" 
         :alt="movie.title"
         >
@@ -51,11 +51,11 @@ function navigateToMovie() {
             <div class="d-flex align-items-center mb-2">
             <span class="badge bg-warning me-2">
                 <i class="bi bi-star-fill me-1"></i>
-                {{ movie.vote_average.toFixed(1) }}
+                {{ movie.vote_average?.toFixed(1) || 'N/A'  }}
             </span>
             <small class="text-muted">{{ movie.vote_count }} votes</small>
             </div>
-            <p class="card-text small" style="height: 4.5rem; overflow-y: scroll; text-overflow: ellipsis;">
+            <p class="card-text small" >
             {{ movie.overview }}
             </p>
         </div>
@@ -76,6 +76,12 @@ function navigateToMovie() {
 <style scoped>
 .card {
     cursor: pointer;
+}
+
+.overview-text {
+    height: 4.5rem; 
+    overflow-y: scroll; 
+    text-overflow: ellipsis;
 }
 
 </style>

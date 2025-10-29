@@ -1,23 +1,3 @@
-<template>
-  <div class="cast-container">
-    <div class="cast-scroll">
-      <div v-for="member in cast" :key="member.cast_id" class="cast-card">
-        <div class="card h-100">
-          <img 
-            :src="getProfileImage(member.profile_path)" 
-            class="card-img-top" 
-            :alt="member.name"
-          />
-          <div class="card-body">
-            <h5 class="card-title">{{ member.name }}</h5>
-            <p class="card-text text-muted">{{ member.character }}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup>
 const props = defineProps({
   cast: {
@@ -35,6 +15,26 @@ const getProfileImage = (profilePath) => {
   return '/_nuxt/assets/No-Image-Placeholder.png';
 };
 </script>
+
+<template>
+  <div class="cast-container">
+    <div class="cast-scroll">
+      <div v-for="member in cast" :key="member.cast_id" class="cast-card">
+        <div class="card h-100">
+          <img 
+            :src="getProfileImage(member.profile_path)" 
+            class="card-img-top" 
+            :alt="`${member.name} as ${member.character}`"
+          />
+          <div class="card-body">
+            <h5 class="card-title">{{ member.name }}</h5>
+            <p class="card-text text-muted">{{ member.character }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .cast-container {

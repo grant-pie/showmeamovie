@@ -90,7 +90,101 @@ const errorMessage = ref(null);
 const genresError = ref(null);
 const languagesError = ref(null);
 
+// Debounce timer for filter changes
+const filterDebounceTimer = ref(null);
+
+// Flag to track if initial restoration from URL has been completed
+const hasRestoredFromURL = ref(false);
+
+// Flag to suppress filter watchers during restoration
+const isRestoringFromURL = ref(false);
+
+// Ref for announcing changes to screen readers
+const screenReaderAnnouncement = ref('');
+
+// Refs for keyboard navigation and focus management
+const dropdownRefs = ref({});
+const focusedDropdownKey = ref(null);
+const focusedItemIndex = ref(-1);
+
 const apiKey = useRuntimeConfig().public.apiKey
+
+// Function to generate SEO-friendly meta title based on active filters
+function generateMetaTitle() {
+    const filters = [];
+    
+    if (dropdowns.value.genre.activeItem) {
+        filters.push(dropdowns.value.genre.activeItem);
+    }
+    if (dropdowns.value.rating.activeItem) {
+        filters.push(`${dropdowns.value.rating.activeItem} rated`);
+    }
+    if (dropdowns.value.year.activeItem && dropdowns.value.year.activeItem !== 'All') {
+        filters.push(dropdowns.value.year.activeItem);
+    }
+    if (dropdowns.value.language.activeItem && dropdowns.value.language.activeItem !== 'English') {
+        filters.push(dropdowns.value.language.activeItem);
+    }
+    
+    if (filters.length === 0) {
+        return 'Discover Movies - Browse and Filter Movies';
+    }
+    
+    const filterText = filters.join(' ');
+    return `${filterText} Movies - Page ${currentPage.value}`;
+}
+
+// Function to generate SEO-friendly meta description based on active filters
+function generateMetaDescription() {
+    const filters = [];
+    let description = 'Browse and discover ';
+    
+    if (dropdowns.value.genre.activeItem) {
+        filters.push(dropdowns.value.genre.activeItem.toLowerCase());
+    }
+    if (dropdowns.value.rating.activeItem) {
+        filters.push(`${dropdowns.value.rating.activeItem} rated`);
+    }
+    if (dropdowns.value.year.activeItem && dropdowns.value.year.activeItem !== 'All') {
+        filters.push(`from ${dropdowns.value.year.activeItem}`);
+    }
+    if (dropdowns.value.language.activeItem && dropdowns.value.language.activeItem !== 'English') {
+        filters.push(`in ${dropdowns.value.language.activeItem}`);
+    }
+    
+    if (filters.length === 0) {
+        description += 'thousands of movies. Filter by genre, rating, year, language, and more. Find your next favorite film.';
+    } else {
+        description += filters.join(' ') + ' movies. ';
+        if (moviesLoaded.value && movies.value.length > 0) {
+            description += `Showing page ${currentPage.value} of ${totalPages.value} results.`;
+        } else {
+            description += 'Use our advanced filters to find the perfect movie.';
+        }
+    }
+    
+    return description;
+}
+
+// Function to update meta tags
+function updateMetaTags() {
+    const title = generateMetaTitle();
+    const description = generateMetaDescription();
+    
+    useHead({
+        title: title,
+        meta: [
+            { name: 'description', content: description },
+            { name: 'robots', content: 'index, follow' },
+            // Canonical URL based on current filters
+            { 
+                tagName: 'link',
+                rel: 'canonical',
+                href: `${window.location.origin}${window.location.pathname}${window.location.search}`
+            }
+        ]
+    });
+}
 
 
 onMounted(() => {
@@ -111,6 +205,22 @@ onMounted(() => {
 
     // Get languages
     getLanguages();
+    
+    // Set initial meta tags
+    updateMetaTags();
+});
+
+// Watch for changes that should update meta tags
+watch([
+    () => dropdowns.value.genre.activeItem,
+    () => dropdowns.value.rating.activeItem,
+    () => dropdowns.value.year.activeItem,
+    () => dropdowns.value.language.activeItem,
+    () => dropdowns.value.sort.activeItem,
+    currentPage,
+    moviesLoaded
+], () => {
+    updateMetaTags();
 });
 
 // Watch totalPages to ensure currentPage doesn't exceed it
@@ -120,13 +230,47 @@ watch(totalPages, (newTotal) => {
     }
 });
 
+// Helper function to safely set page number
+function setPageNumber(pageNum) {
+    // Validate and sanitize page number
+    let validPage = parseInt(pageNum);
+    
+    if (isNaN(validPage) || validPage < 1) {
+        validPage = 1;
+    } else if (validPage > 500) {
+        validPage = 500; // TMDB API max limit
+    } else if (totalPages.value > 0 && validPage > totalPages.value) {
+        validPage = totalPages.value;
+    }
+    
+    currentPage.value = validPage;
+}
+
+// Debounced function to handle filter changes
+// This prevents multiple rapid API calls when filters change
+function debouncedFilterChange(resetPage = true) {
+    // Clear existing timer
+    if (filterDebounceTimer.value) {
+        clearTimeout(filterDebounceTimer.value);
+    }
+    
+    // Set new timer
+    filterDebounceTimer.value = setTimeout(() => {
+        if (resetPage) {
+            currentPage.value = 1;
+        }
+        updateURL();
+        getMovies();
+    }, 300); // 300ms delay
+}
+
 watch(genres, (genres) => {
     genres.forEach((genre)=>{
         dropdowns.value.genre.values.push(genre.name);
     });
     
-    // After genres are loaded, restore from URL
-    restoreFromURL();
+    // After genres are loaded, check if we can restore from URL
+    attemptRestoreFromURL();
 });
 
 watch(languages, (language) => {
@@ -137,8 +281,8 @@ watch(languages, (language) => {
         }
     });
     
-    // After languages are loaded, restore from URL
-    restoreFromURL();
+    // After languages are loaded, check if we can restore from URL
+    attemptRestoreFromURL();
 });
 
 watch(currentPage, (newPage, oldPage) => {
@@ -164,35 +308,35 @@ watch(currentPage, (newPage, oldPage) => {
     getMovies();
 });
 
-// Watch for changes in dropdown selections
+// Watch for changes in dropdown selections - use debouncing to prevent redundant calls
 watch(() => dropdowns.value.genre.activeItem, () => {
-    currentPage.value = 1; // Reset to page 1 when filters change
-    updateURL();
-    getMovies();
+    // Don't trigger during URL restoration
+    if (isRestoringFromURL.value) return;
+    debouncedFilterChange(true);
 });
 
 watch(() => dropdowns.value.rating.activeItem, () => {
-    currentPage.value = 1;
-    updateURL();
-    getMovies();
+    // Don't trigger during URL restoration
+    if (isRestoringFromURL.value) return;
+    debouncedFilterChange(true);
 });
 
 watch(() => dropdowns.value.year.activeItem, () => {
-    currentPage.value = 1;
-    updateURL();
-    getMovies();
+    // Don't trigger during URL restoration
+    if (isRestoringFromURL.value) return;
+    debouncedFilterChange(true);
 });
 
 watch(() => dropdowns.value.language.activeItem, () => {
-    currentPage.value = 1;
-    updateURL();
-    getMovies();
+    // Don't trigger during URL restoration
+    if (isRestoringFromURL.value) return;
+    debouncedFilterChange(true);
 });
 
 watch(() => dropdowns.value.sort.activeItem, () => {
-    currentPage.value = 1;
-    updateURL();
-    getMovies();
+    // Don't trigger during URL restoration
+    if (isRestoringFromURL.value) return;
+    debouncedFilterChange(true);
 });
 
 // Function to update URL with current filter state
@@ -225,12 +369,24 @@ function updateURL() {
     router.push({ query });
 }
 
+// Function to attempt restoration from URL only when both genres and languages are loaded
+function attemptRestoreFromURL() {
+    // Only proceed if both are loaded and we haven't restored yet
+    if (genres.value.length > 0 && languages.value.length > 0 && !hasRestoredFromURL.value) {
+        hasRestoredFromURL.value = true;
+        restoreFromURL();
+    }
+}
+
 // Function to restore state from URL
 function restoreFromURL() {
     // Only restore if data is loaded
     if (genres.value.length === 0 || languages.value.length === 0) {
         return;
     }
+    
+    // Set flag to suppress filter watchers during restoration
+    isRestoringFromURL.value = true;
     
     const query = route.query;
     
@@ -249,35 +405,55 @@ function restoreFromURL() {
         currentPage.value = pageNum;
     }
     
+    // Track if we're restoring filters (to trigger only one API call)
+    let filtersRestored = false;
+    
     // Restore genre
     if (query.genre && dropdowns.value.genre.values.includes(query.genre)) {
         dropdowns.value.genre.activeItem = query.genre;
+        filtersRestored = true;
     }
     
     // Restore rating
     if (query.rating && dropdowns.value.rating.values.includes(query.rating)) {
         dropdowns.value.rating.activeItem = query.rating;
+        filtersRestored = true;
     }
     
     // Restore year
     if (query.year && dropdowns.value.year.values.includes(query.year)) {
         dropdowns.value.year.activeItem = query.year;
+        filtersRestored = true;
     }
     
     // Restore language
     if (query.language && dropdowns.value.language.values.includes(query.language)) {
         dropdowns.value.language.activeItem = query.language;
+        filtersRestored = true;
     }
     
     // Restore sort
     if (query.sort && dropdowns.value.sort.values.includes(query.sort)) {
         dropdowns.value.sort.activeItem = query.sort;
+        filtersRestored = true;
     }
     
-    // Fetch movies with restored filters
-    if (Object.keys(query).length > 0) {
+    // Clear restoration flag before making API call
+    isRestoringFromURL.value = false;
+    
+    // Fetch movies with restored filters - only once after all filters are set
+    if (filtersRestored || query.page) {
+        // Clear any pending debounced calls
+        if (filterDebounceTimer.value) {
+            clearTimeout(filterDebounceTimer.value);
+        }
+        // Call immediately without debounce for initial load
+        updateURL();
         getMovies();
     }
+    
+    // Update meta tags after restoration
+    updateMetaTags();
 }
 
 async function getMovieGenres() {
@@ -370,8 +546,7 @@ function calcYears(){
 async function getMovies(){
     isLoadingMovies.value = true;
     errorMessage.value = null;
-    console.log('Fetching movies with current filters...');
-    console.log({dropdowns: dropdowns.value, currentPage: currentPage.value});
+    
     try {
         // Calc url
         let url = 'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false?';
@@ -453,6 +628,15 @@ async function getMovies(){
         movies.value = json.results || [];
         totalPages.value = json.total_pages || 0;
         moviesLoaded.value = true;
+        
+        // Announce results to screen readers
+        const resultsCount = movies.value.length;
+        const totalResults = json.total_results || 0;
+        if (resultsCount > 0) {
+            screenReaderAnnouncement.value = `Found ${totalResults} movies. Showing page ${currentPage.value} of ${totalPages.value}. ${resultsCount} movies displayed on this page.`;
+        } else {
+            screenReaderAnnouncement.value = 'No movies found. Please refine your search parameters.';
+        }
     } catch (err) {
         errorMessage.value = err.message || 'Failed to load movies. Please check your connection and try again.';
         console.error('Error fetching movies:', err);
@@ -466,7 +650,124 @@ async function getMovies(){
 // Function to handle dropdown selection
 function handleDropdownSelect(key, item) {
     dropdowns.value[key].activeItem = item;
+    
+    // Close dropdown and return focus to toggle button
+    nextTick(() => {
+        const toggleButton = document.getElementById(`dropdownMenu${key.charAt(0).toUpperCase() + key.slice(1)}Btn`);
+        if (toggleButton) {
+            // Close the dropdown
+            const dropdown = window.bootstrap?.Dropdown?.getInstance(toggleButton);
+            if (dropdown) {
+                dropdown.hide();
+            }
+            // Return focus to toggle button
+            toggleButton.focus();
+        }
+    });
+    
     // The watchers will handle the rest (updating URL and fetching movies)
+}
+
+// Keyboard navigation for dropdown menus
+function handleDropdownKeydown(event, key, values) {
+    const items = values.values;
+    
+    switch(event.key) {
+        case 'ArrowDown':
+            event.preventDefault();
+            focusedItemIndex.value = (focusedItemIndex.value + 1) % items.length;
+            focusDropdownItem(key, focusedItemIndex.value);
+            break;
+            
+        case 'ArrowUp':
+            event.preventDefault();
+            focusedItemIndex.value = focusedItemIndex.value <= 0 ? items.length - 1 : focusedItemIndex.value - 1;
+            focusDropdownItem(key, focusedItemIndex.value);
+            break;
+            
+        case 'Home':
+            event.preventDefault();
+            focusedItemIndex.value = 0;
+            focusDropdownItem(key, 0);
+            break;
+            
+        case 'End':
+            event.preventDefault();
+            focusedItemIndex.value = items.length - 1;
+            focusDropdownItem(key, items.length - 1);
+            break;
+            
+        case 'Escape':
+            event.preventDefault();
+            closeDropdownAndFocus(key);
+            break;
+            
+        case 'Tab':
+            // Let Bootstrap handle Tab - it will close the dropdown
+            closeDropdownAndFocus(key);
+            break;
+    }
+}
+
+// Focus a specific dropdown item
+function focusDropdownItem(key, index) {
+    nextTick(() => {
+        const dropdownMenu = document.querySelector(`#dropdownMenu${key.charAt(0).toUpperCase() + key.slice(1)}Btn + .dropdown-menu`);
+        if (dropdownMenu) {
+            const buttons = dropdownMenu.querySelectorAll('button[role="menuitem"]');
+            if (buttons[index]) {
+                buttons[index].focus();
+            }
+        }
+    });
+}
+
+// Close dropdown and return focus to toggle button
+function closeDropdownAndFocus(key) {
+    const toggleButton = document.getElementById(`dropdownMenu${key.charAt(0).toUpperCase() + key.slice(1)}Btn`);
+    if (toggleButton) {
+        const dropdown = window.bootstrap?.Dropdown?.getInstance(toggleButton);
+        if (dropdown) {
+            dropdown.hide();
+        }
+        toggleButton.focus();
+    }
+}
+
+// Handle dropdown open event to reset focus index
+function handleDropdownShow(key) {
+    focusedDropdownKey.value = key;
+    focusedItemIndex.value = -1;
+    
+    // Find the currently selected item and set focus index to it
+    const currentSelection = dropdowns.value[key].activeItem;
+    if (currentSelection) {
+        const index = dropdowns.value[key].values.indexOf(currentSelection);
+        if (index !== -1) {
+            focusedItemIndex.value = index;
+            nextTick(() => {
+                focusDropdownItem(key, index);
+            });
+        }
+    }
+}
+
+// Handle item click with keyboard support
+function handleItemSelect(event, key, item) {
+    handleDropdownSelect(key, item);
+}
+
+// Handle reset filters with focus management
+function handleResetWithFocus() {
+    resetFilters();
+    
+    // Focus the first filter dropdown after reset
+    nextTick(() => {
+        const firstDropdown = document.querySelector('.dropdown button[type="button"]');
+        if (firstDropdown) {
+            firstDropdown.focus();
+        }
+    });
 }
 
 // Function to retry failed requests
@@ -496,15 +797,32 @@ function resetFilters() {
     movies.value = [];
     moviesLoaded.value = false;
     errorMessage.value = null;
+    
+    // Announce to screen readers
+    screenReaderAnnouncement.value = 'All filters have been reset. Please select new filters to discover movies.';
 }
 
 </script>
 
 <template>
   
-    <section
+    <main
     class="d-flex flex-column min-vh-100"
+    role="main"
+    aria-label="Movie discovery application"
     >
+
+        <!-- Skip Navigation Link -->
+        <a href="#movie-results" class="skip-link">Skip to movie results</a>
+
+        <!-- Screen reader announcements -->
+        <div 
+            aria-live="polite" 
+            aria-atomic="true" 
+            class="visually-hidden"
+        >
+            {{ screenReaderAnnouncement }}
+        </div>
 
         <!--content-->
         <div>
@@ -512,24 +830,38 @@ function resetFilters() {
             <div v-if="genresError || languagesError" class="container mt-4">
                 <div v-if="genresError" class="alert alert-danger alert-dismissible fade show" role="alert">
                     <strong>Error loading genres:</strong> {{ genresError }}
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-3" @click="retryFailedRequest('genres')">
+                    <button 
+                        type="button" 
+                        class="btn btn-sm btn-outline-danger ms-3" 
+                        @click="retryFailedRequest('genres')"
+                        aria-label="Retry loading genres"
+                    >
                         Retry
                     </button>
-                    <button type="button" class="btn-close" @click="genresError = null" aria-label="Close"></button>
+                    <button type="button" class="btn-close" @click="genresError = null" aria-label="Close error message"></button>
                 </div>
                 <div v-if="languagesError" class="alert alert-danger alert-dismissible fade show" role="alert">
                     <strong>Error loading languages:</strong> {{ languagesError }}
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-3" @click="retryFailedRequest('languages')">
+                    <button 
+                        type="button" 
+                        class="btn btn-sm btn-outline-danger ms-3" 
+                        @click="retryFailedRequest('languages')"
+                        aria-label="Retry loading languages"
+                    >
                         Retry
                     </button>
-                    <button type="button" class="btn-close" @click="languagesError = null" aria-label="Close"></button>
+                    <button type="button" class="btn-close" @click="languagesError = null" aria-label="Close error message"></button>
                 </div>
             </div>
 
-            <form>
+            <form aria-label="Movie filters">
 
                 <!--dropdowns-->
-                <div class="d-flex justify-content-center align-items-center my-5 flex-wrap gap-2">
+                <div 
+                    class="d-flex justify-content-center align-items-center my-5 flex-wrap gap-2"
+                    role="group"
+                    aria-label="Filter options"
+                >
 
                     <div v-for="(values, key) in dropdowns" :key="key" class="dropdown">
                         <button 
@@ -538,26 +870,45 @@ function resetFilters() {
                         :id="`dropdownMenu${key.charAt(0).toUpperCase() + key.slice(1)}Btn`" 
                         data-bs-toggle="dropdown" 
                         aria-expanded="false"
+                        :aria-label="`Filter by ${key}. Current selection: ${values.activeItem || 'None'}`"
+                        :aria-describedby="(key === 'genre' && isLoadingGenres) || (key === 'language' && isLoadingLanguages) ? `${key}-loading-msg` : undefined"
                         :disabled="(key === 'genre' && isLoadingGenres) || (key === 'language' && isLoadingLanguages)"
+                        @shown.bs.dropdown="handleDropdownShow(key)"
                         >
                         {{ values.activeItem === null ? key.charAt(0).toUpperCase() + key.slice(1) : values.activeItem }}
                         </button>
+                        <span 
+                            :id="`${key}-loading-msg`" 
+                            class="visually-hidden"
+                            v-if="(key === 'genre' && isLoadingGenres) || (key === 'language' && isLoadingLanguages)"
+                        >
+                            Loading {{ key }} options, please wait
+                        </span>
                         <ul 
                         class="dropdown-menu" 
+                        role="menu"
                         :aria-labelledby="`dropdownMenu${key.charAt(0).toUpperCase() + key.slice(1)}Btn`"
+                        @keydown="handleDropdownKeydown($event, key, values)"
                         >
                            
                             <li 
                             v-for="(item, index) in values.values" 
                             :key="item" 
-                            class="dropdown-item"
-                            :class="index === 0 && values.options.underlineFirstItem ? 'border-info border-bottom' : ''"
-                            @click="handleDropdownSelect(key, values.values[index])"
-  
+                            role="none"
                             >
-                                {{ item }}
-
-                            
+                                <button
+                                    type="button"
+                                    class="dropdown-item"
+                                    role="menuitem"
+                                    :class="index === 0 && values.options.underlineFirstItem ? 'border-info border-bottom' : ''"
+                                    :aria-current="values.activeItem === item ? 'true' : 'false'"
+                                    @click="handleItemSelect($event, key, item)"
+                                    @keydown.enter.prevent="handleItemSelect($event, key, item)"
+                                    @keydown.space.prevent="handleItemSelect($event, key, item)"
+                                >
+                                    {{ item }}
+                                    <span v-if="values.activeItem === item" class="visually-hidden"> (currently selected)</span>
+                                </button>
                             </li>
                         </ul>
 
@@ -568,12 +919,22 @@ function resetFilters() {
                     <button 
                         type="button" 
                         class="btn btn-outline-secondary"
-                        @click="resetFilters"
+                        @click="handleResetWithFocus"
                         :disabled="isLoadingMovies || isLoadingGenres || isLoadingLanguages"
                         v-show="dropdowns.genre.activeItem || dropdowns.rating.activeItem || dropdowns.year.activeItem || dropdowns.language.activeItem || dropdowns.sort.activeItem"
+                        aria-label="Reset all filters and clear search"
                     >
                         <span class="me-1">Reset Filters</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-circle" viewBox="0 0 16 16">
+                        <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            width="16" 
+                            height="16" 
+                            fill="currentColor" 
+                            class="bi bi-x-circle" 
+                            viewBox="0 0 16 16"
+                            aria-hidden="true"
+                            focusable="false"
+                        >
                             <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
                             <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
                         </svg>
@@ -587,23 +948,37 @@ function resetFilters() {
             <div v-if="errorMessage" class="container">
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <strong>Error:</strong> {{ errorMessage }}
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-3" @click="retryFailedRequest('movies')">
+                    <button 
+                        type="button" 
+                        class="btn btn-sm btn-outline-danger ms-3" 
+                        @click="retryFailedRequest('movies')"
+                        aria-label="Retry loading movies"
+                    >
                         Retry
                     </button>
-                    <button type="button" class="btn-close" @click="errorMessage = null" aria-label="Close"></button>
+                    <button type="button" class="btn-close" @click="errorMessage = null" aria-label="Close error message"></button>
                 </div>
             </div>
 
             <!-- Loading spinner -->
-            <div v-if="isLoadingMovies" class="d-flex justify-content-center my-5">
+            <div 
+                v-if="isLoadingMovies" 
+                class="d-flex justify-content-center my-5"
+                role="status"
+                aria-live="polite"
+            >
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading movies...</span>
+                    <span class="visually-hidden">Loading movies, please wait...</span>
                 </div>
             </div>
 
             <!--results-->
-            <div
-            v-show="movies.length > 0 && !isLoadingMovies"
+            <section
+                id="movie-results"
+                v-show="movies.length > 0 && !isLoadingMovies"
+                role="region"
+                aria-label="Movie search results"
+                tabindex="-1"
             >
                 <MovieGrid
                 :movies="movies"
@@ -611,22 +986,30 @@ function resetFilters() {
                 />
                 
                 <!--pagination-->
-                <div class="d-flex justify-content-center my-5">
+                <nav 
+                    class="d-flex justify-content-center my-5"
+                    aria-label="Movie results pagination"
+                >
                     <Paginator
                     :total-pages = totalPages
                     v-model="currentPage" 
                     />
-                </div>
-            </div>
+                </nav>
+            </section>
+            
             <div
-            class="justify-content-center mt-5"
-            :class="movies.length === 0 && moviesLoaded && !isLoadingMovies && !errorMessage ? 'd-flex' : 'd-none'"
+                class="justify-content-center mt-5"
+                :class="movies.length === 0 && moviesLoaded && !isLoadingMovies && !errorMessage ? 'd-flex' : 'd-none'"
+                role="status"
+                aria-live="polite"
             >
-                <p>No movies found, please refine your search parameters...</p>
+                <p>No movies found, please refine your search parameters.</p>
             </div>
+            
             <div
-            class="justify-content-center mt-5"
-            :class="!moviesLoaded && !isLoadingMovies && !errorMessage ? 'd-flex' : 'd-none'"
+                class="justify-content-center mt-5"
+                :class="!moviesLoaded && !isLoadingMovies && !errorMessage ? 'd-flex' : 'd-none'"
+                role="status"
             >
                 <p>Select your filters above to discover movies!</p>
             </div>
@@ -635,7 +1018,7 @@ function resetFilters() {
 
 
 
-    </section>
+    </main>
 
 </template>
 
@@ -649,6 +1032,79 @@ function resetFilters() {
 
     .dropdown-item{
         cursor: pointer;
+    }
+
+    /* Skip Navigation Link */
+    .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #000;
+        color: #fff;
+        padding: 8px 16px;
+        text-decoration: none;
+        z-index: 100;
+        border-radius: 0 0 4px 0;
+        font-weight: 600;
+    }
+
+    .skip-link:focus {
+        top: 0;
+        outline: 3px solid #0d6efd;
+        outline-offset: 2px;
+    }
+
+    /* Enhanced Focus Indicators */
+    .btn:focus-visible,
+    .dropdown-toggle:focus-visible {
+        outline: 3px solid #0d6efd;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .dropdown-item:focus,
+    .dropdown-item:focus-visible {
+        background-color: #0d6efd;
+        color: #fff;
+        outline: 2px solid #0a58ca;
+        outline-offset: -2px;
+    }
+
+    .dropdown-item[aria-current="true"] {
+        background-color: #e7f1ff;
+        font-weight: 600;
+        position: relative;
+    }
+
+    .dropdown-item[aria-current="true"]::before {
+        content: "✓";
+        position: absolute;
+        left: 8px;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .dropdown-item[aria-current="true"] {
+        padding-left: 28px;
+    }
+
+    /* High contrast focus for accessibility */
+    @media (prefers-contrast: high) {
+        .btn:focus-visible,
+        .dropdown-toggle:focus-visible {
+            outline: 4px solid currentColor;
+        }
+        
+        .dropdown-item:focus,
+        .dropdown-item:focus-visible {
+            outline: 3px solid #000;
+        }
+    }
+
+    /* Smooth focus transitions */
+    .btn,
+    .dropdown-item {
+        transition: outline 0.15s ease, box-shadow 0.15s ease;
     }
 
 </style>

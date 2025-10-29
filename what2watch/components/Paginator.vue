@@ -1,7 +1,6 @@
   
   <script setup>
-  import { ref, computed } from 'vue';
-  
+  import { ref, computed, watch } from 'vue';
   // Props
   const props = defineProps({
     totalPages: {
@@ -21,7 +20,7 @@
   const currentPage = ref(props.modelValue);
   
   // Watch for changes to emit update events
-  import { watch } from 'vue';
+
   watch(currentPage, (newValue) => {
     emit('update:modelValue', newValue);
   });

@@ -1,43 +1,3 @@
-<template>
-  <Teleport to="body">
-    <Transition name="fade">
-      <div v-if="isOpen" class="video-overlay" @click="closePlayer">
-        <div class="video-container" @click.stop>
-          <button class="close-button" @click="closePlayer" aria-label="Close video">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-          
-          <!-- For YouTube/Vimeo/iframe embeds -->
-          <iframe
-            v-if="isEmbedUrl"
-            ref="iframeRef"
-            :src="embedUrl"
-            class="video-player"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
-          
-          <!-- For direct video files -->
-          <video
-            v-else
-            ref="videoRef"
-            :src="url"
-            controls
-            autoplay
-            class="video-player"
-            @loadedmetadata="onVideoLoaded"
-          >
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-</template>
 
 <script setup>
 import { ref, watch, computed } from 'vue';
@@ -120,15 +80,53 @@ const closePlayer = () => {
   emit('close');
 };
 
-const onVideoLoaded = () => {
-  console.log('Video loaded successfully');
-};
-
 // Expose methods for parent component if needed
 defineExpose({
   closePlayer
 });
 </script>
+
+<template>
+  <Teleport to="body">
+    <Transition name="fade">
+      <div v-if="isOpen" class="video-overlay" @click="closePlayer">
+        <div class="video-container" @click.stop>
+          <button class="close-button" @click="closePlayer" aria-label="Close video">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+          
+          <!-- For YouTube/Vimeo/iframe embeds -->
+          <iframe
+            v-if="isEmbedUrl"
+            ref="iframeRef"
+            :src="embedUrl"
+            class="video-player"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+          
+          <!-- For direct video files -->
+          <video
+            v-else
+            ref="videoRef"
+            :src="url"
+            controls
+            autoplay
+            class="video-player"
+
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
+
 
 <style scoped>
 .video-overlay {
