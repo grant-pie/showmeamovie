@@ -513,16 +513,23 @@ async function getLanguages() {
 function calcYears(){
     // Get year ranges
     const currentYear = parseInt(new Date().getFullYear());
+    const currentDecadeStart = Math.floor(currentYear / 10) * 10;
 
     // Push first year range
     dropdowns.value.year.values.push('All');
-    dropdowns.value.year.values.push('<1950' );
+    dropdowns.value.year.values.push('<1950');
 
     for(let i = 1950; i <= currentYear; i = i + 10) {
-        dropdowns.value.year.values.push( i.toString() + '-' + (i + 9).toString() );
+        if(i === currentDecadeStart) {
+            // Current decade: show as "2020-2025" instead of "2020-2029"
+            dropdowns.value.year.values.push(i.toString() + '-' + currentYear.toString());
+        } else {
+            // Past decades: show full range
+            dropdowns.value.year.values.push(i.toString() + '-' + (i + 9).toString());
+        }
     }
 
-    dropdowns.value.year.values.push( 'Latest' );
+    dropdowns.value.year.values.push('Latest');
 }
 
 async function getMovies(){
