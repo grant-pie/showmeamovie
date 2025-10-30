@@ -414,6 +414,7 @@ function restoreFromURL() {
     if (hasNoQueries) {
         dropdowns.value.language.activeItem = 'English';
         dropdowns.value.sort.activeItem = 'Popularity Descending';
+        dropdowns.value.year.activeItem = 'Latest';
         filtersRestored = true;
     }
     
