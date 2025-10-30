@@ -1,7 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import placeholderImage from '~/assets/No-Image-Placeholder.png'
-import loadingImage from '~/assets/Image-Loading-Placeholder.png'
 const router = useRouter();
 
 const props = defineProps({
@@ -182,7 +181,7 @@ img {
 }
 
 .blur-load {
-    background-image: url('~/assets/Image-Loading-Placeholder.png');
+  background-image: url('~/assets/Image-Loading-Placeholder.png');
   background-size: cover;
   background-position: center;
 }

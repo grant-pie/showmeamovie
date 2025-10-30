@@ -1,6 +1,5 @@
 <script setup>
 import placeholderImage from '~/assets/No-Image-Placeholder.png'
-import loadingImage from '~/assets/Image-Loading-Placeholder.png'
 
 const route = useRoute()
 const router = useRouter()
