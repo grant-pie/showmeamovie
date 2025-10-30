@@ -76,7 +76,6 @@ const handleGlobalKeydown = (e) => {
 
 // Open watch provider (currently just opens TMDB, but can be customized)
 const openWatchProvider = (provider, link) => {
-    console.log('Opening watch provider:', provider);
     // You can customize this to link to the actual provider if TMDB provides URLs
     // For now, it opens TMDB with provider info
     window.open(link, '_blank', 'noopener,noreferrer');
@@ -145,7 +144,6 @@ async function getMovie(id){
         
         const json = await response.json();
         movie.value = json;
-        console.log('Movie data:', json);
         // Announce movie title to screen readers
         screenReaderAnnouncement.value = `Movie loaded: ${json.title}`;
         
@@ -181,7 +179,6 @@ async function getWatchProviders(id){
         
         const json = await response.json();
         watchProviders.value = json;
-        console.log('Watch providers data:', json);
     } catch (err) {
         watchProvidersError.value = err.message || 'Failed to load watch providers.';
         console.error('Error fetching watch providers:', err);
@@ -1079,7 +1076,7 @@ img{
 }
 
 .blur-load {
-    background-image: loadingImage;
+    background-image: url('~/assets/Image-Loading-Placeholder');
     background-size: cover;
     background-position: center;
 }

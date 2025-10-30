@@ -263,7 +263,6 @@ watch(currentPage, (newPage, oldPage) => {
     
     // If we have totalPages loaded and newPage exceeds it, cap at totalPages
     if (totalPages.value > 0 && newPage > totalPages.value) {
-        console.log('exceed')
         currentPage.value = totalPages.value;
         return;
     }
@@ -276,7 +275,6 @@ watch(currentPage, (newPage, oldPage) => {
     
     updateURL();
     getMovies();
-    console.log(`Page changed from ${oldPage} to ${newPage}`)
 });
 
 // Watch for changes in dropdown selections - use debouncing to prevent redundant calls
@@ -528,7 +526,6 @@ function calcYears(){
 }
 
 async function getMovies(){
-    console.log('Fetching movies with current filters...');
     isLoadingMovies.value = true;
     errorMessage.value = null;
     
