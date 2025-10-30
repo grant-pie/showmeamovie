@@ -1076,7 +1076,7 @@ img{
 }
 
 .blur-load {
-    background-image: url('~/assets/Image-Loading-Placeholder');
+    background-image: url('~/assets/Image-Loading-Placeholder.png');
     background-size: cover;
     background-position: center;
 }
