@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 
 // Props
 const props = defineProps({
@@ -18,6 +18,22 @@ const emit = defineEmits(['update:modelValue']);
 
 // State
 const currentPage = ref(props.modelValue);
+const isMobile = ref(false);
+
+// Check if device is mobile
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768; // Adjust breakpoint as needed
+};
+
+// Lifecycle hooks
+onMounted(() => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile);
+});
 
 // Watch for changes to emit update events
 watch(currentPage, (newValue) => {
@@ -73,7 +89,39 @@ const showRightEllipsis = computed(() => {
 
 <template>
   <nav aria-label="Pagination navigation">
-    <ul class="pagination-list">
+    <!-- Mobile view: Previous | Current | Next -->
+    <ul v-if="isMobile" class="pagination-list pagination-mobile">
+      <li>
+        <button 
+          class="btn btn-primary"
+          :disabled="currentPage === 1"
+          :aria-label="`Go to previous page, page ${currentPage - 1}`"
+          @click="currentPage > 1 ? currentPage-- : null"
+        >
+          <span aria-hidden="true">Previous</span>
+        </button>
+      </li>
+      
+      <li>
+        <span class="current-page-indicator text-light">
+          Page {{ currentPage }} of {{ totalPages }}
+        </span>
+      </li>
+      
+      <li>
+        <button 
+          class="btn btn-primary"
+          :disabled="currentPage === totalPages"
+          :aria-label="`Go to next page, page ${currentPage + 1}`"
+          @click="currentPage < totalPages ? currentPage++ : null"
+        >
+          <span aria-hidden="true">Next</span>
+        </button>
+      </li>
+    </ul>
+
+    <!-- Desktop view: Full pagination -->
+    <ul v-else class="pagination-list">
       <li v-show="currentPage > 1">
         <button 
           class="btn btn-primary me-1"
@@ -176,8 +224,33 @@ const showRightEllipsis = computed(() => {
   outline-offset: 2px;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .ellipsis {
   cursor: default;
   pointer-events: none;
+}
+
+/* Mobile-specific styles */
+.pagination-mobile {
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.pagination-mobile li {
+  flex: 0 0 auto;
+}
+
+.current-page-indicator {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
 }
 </style>
