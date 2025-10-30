@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   
   // GitHub Pages configuration
   app: {
-    baseURL: '/what2watch/', // IMPORTANT: Replace 'your-repo-name' with your actual GitHub repository name
+    baseURL: '/showmeamovie/',
     buildAssetsDir: 'assets',
   },
   
