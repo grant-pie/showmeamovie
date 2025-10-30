@@ -60,6 +60,8 @@ A modern, accessible single-page web application built with Nuxt 3 for browsing 
 └── assets/
     ├── No-Image-Placeholder.png
     └── Image-Loading-Placeholder.png
+    └── logo.png
+    └── main.scss
 ```
 
 ## Setup
@@ -209,6 +211,7 @@ This project is licensed under the MIT License.
 
 - Movie data provided by [The Movie Database (TMDB)](https://www.themoviedb.org/)
 - Icons from [Bootstrap Icons](https://icons.getbootstrap.com/)
+- Icons from [Nuxt Icons](https://nuxt.com/modules/icon)
 - Built with [Nuxt 3](https://nuxt.com/)
 
 ## Disclaimer
