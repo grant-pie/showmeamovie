@@ -1,4 +1,5 @@
 <script setup>
+import placeholderImage from '~/assets/No-Image-Placeholder.png'
 const props = defineProps({
   cast: {
     type: Array,
@@ -14,7 +15,7 @@ const getProfileImage = (profilePath) => {
     return `https://image.tmdb.org/t/p/w185${profilePath}`;
   }
   // Use local placeholder image
-  return '/_nuxt/assets/No-Image-Placeholder.png';
+  return placeholderImage;
 };
 </script>
 

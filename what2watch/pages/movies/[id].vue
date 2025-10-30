@@ -1,4 +1,5 @@
 <script setup>
+import placeholderImage from '~/assets/No-Image-Placeholder.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -73,11 +74,11 @@ const handleGlobalKeydown = (e) => {
 };
 
 // Open watch provider (currently just opens TMDB, but can be customized)
-const openWatchProvider = (provider) => {
+const openWatchProvider = (provider, link) => {
     console.log('Opening watch provider:', provider);
     // You can customize this to link to the actual provider if TMDB provides URLs
     // For now, it opens TMDB with provider info
-    window.open(`https://www.themoviedb.org/`, '_blank', 'noopener,noreferrer');
+    window.open(link, '_blank', 'noopener,noreferrer');
     screenReaderAnnouncement.value = `Opening ${provider.provider_name} in a new tab`;
 };
 
@@ -94,7 +95,7 @@ const handleBackdropError = () => {
 const getPosterUrl = computed(() => {
     if (posterImageError.value || !movie.value.poster_path) {
         // Return a better fallback - you can replace this with your actual placeholder
-        return 'https://via.placeholder.com/500x750/1a1a1a/ffffff?text=No+Poster+Available';
+        return placeholderImage;
     }
     return `https://image.tmdb.org/t/p/w500${movie.value.poster_path}`;
 });
@@ -179,6 +180,7 @@ async function getWatchProviders(id){
         
         const json = await response.json();
         watchProviders.value = json;
+        console.log('Watch providers data:', json);
     } catch (err) {
         watchProvidersError.value = err.message || 'Failed to load watch providers.';
         console.error('Error fetching watch providers:', err);
@@ -693,9 +695,9 @@ onUnmounted(() => {
         </section>
 
         <div
-        class="px-5 d-flex mt-5"
+        class="px-5 d-flex flex-column flex-md-row mt-5"
         >
-            <article class="col-9">
+            <article class="col-md-9">
                 <h2 class="h4 text-light mb-4">Cast</h2>
                 
                 <!-- Cast Loading State -->
@@ -723,7 +725,7 @@ onUnmounted(() => {
                 </div>
             </article>
 
-            <aside class="text-light col-3 ms-5">
+            <aside class="text-light col-md-3 ms-md-5 mt-5 mt-md-0">
                 <!-- Languages Error -->
                 <div v-if="languagesError" class="alert alert-warning" role="alert">
                     <small>{{ languagesError }}</small>
@@ -760,7 +762,7 @@ onUnmounted(() => {
                                 class="watch-provider-btn"
                                 :aria-label="`Stream on ${provider.provider_name}`"
                                 :title="provider.provider_name"
-                                @click="openWatchProvider(provider)"
+                                @click="openWatchProvider(provider, watchProviders.results.US.link)"
                                 role="listitem"
                             >
                                 <img 
@@ -783,7 +785,7 @@ onUnmounted(() => {
                                 class="watch-provider-btn"
                                 :aria-label="`Rent on ${provider.provider_name}`"
                                 :title="provider.provider_name"
-                                @click="openWatchProvider(provider)"
+                                @click="openWatchProvider(provider,watchProviders.results.US.link)"
                                 role="listitem"
                             >
                                 <img 
@@ -806,7 +808,7 @@ onUnmounted(() => {
                                 class="watch-provider-btn"
                                 :aria-label="`Buy on ${provider.provider_name}`"
                                 :title="provider.provider_name"
-                                @click="openWatchProvider(provider)"
+                                @click="openWatchProvider(provider,watchProviders.results.US.link)"
                                 role="listitem"
                             >
                                 <img 

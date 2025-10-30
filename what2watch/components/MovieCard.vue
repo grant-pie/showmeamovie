@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router';
-
+import placeholderImage from '~/assets/No-Image-Placeholder.png'
 const router = useRouter();
 
 const props = defineProps({
@@ -58,7 +58,7 @@ function handleKeyPress(event) {
       :class="imgLoaded ? 'loaded' : ''" 
     >
       <img 
-        :src="movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '_nuxt/assets/No-Image-Placeholder.png'" 
+        :src="movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : placeholderImage" 
         class="card-img-top p-2"
         :alt="`${movie.title} poster`"
         loading="lazy"

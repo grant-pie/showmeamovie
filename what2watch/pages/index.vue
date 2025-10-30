@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 
 const route = useRoute();
 const router = useRouter();
@@ -102,6 +102,9 @@ const isRestoringFromURL = ref(false);
 // Ref for announcing changes to screen readers
 const screenReaderAnnouncement = ref('');
 
+// Back to top button
+const showBackToTop = ref(false);
+
 // Refs for keyboard navigation and focus management
 const focusedDropdownKey = ref(null);
 const focusedItemIndex = ref(-1);
@@ -185,29 +188,6 @@ function updateMetaTags() {
     });
 }
 
-
-onMounted(() => {
-    // Get genres
-    getMovieGenres();
-
-    // Populate rating
-    for(let i=0; i<=9; i++){
-        if(i < 9){
-            dropdowns.value.rating.values.push(i+1+'+');
-        } else {
-            dropdowns.value.rating.values.push('10');
-        }
-    }
-
-    // Calculate years
-    calcYears();
-
-    // Get languages
-    getLanguages();
-    
-    // Set initial meta tags
-    updateMetaTags();
-});
 
 // Watch for changes that should update meta tags
 watch([
@@ -381,6 +361,9 @@ function restoreFromURL() {
     
     const query = route.query;
     
+    // Check if there are no query parameters at all
+    const hasNoQueries = Object.keys(query).length === 0;
+    
     // Restore page with validation
     if (query.page) {
         let pageNum = parseInt(query.page);
@@ -426,6 +409,13 @@ function restoreFromURL() {
     // Restore sort
     if (query.sort && dropdowns.value.sort.values.includes(query.sort)) {
         dropdowns.value.sort.activeItem = query.sort;
+        filtersRestored = true;
+    }
+    
+    // If no query parameters exist, set defaults
+    if (hasNoQueries) {
+        dropdowns.value.language.activeItem = 'English';
+        dropdowns.value.sort.activeItem = 'Popularity Descending';
         filtersRestored = true;
     }
     
@@ -797,6 +787,55 @@ function resetFilters() {
     screenReaderAnnouncement.value = 'All filters have been reset. Please select new filters to discover movies.';
 }
 
+// Back to top functionality
+const scrollToTop = () => {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+};
+
+// Show/hide back to top button based on scroll position
+const handleScroll = () => {
+    showBackToTop.value = window.scrollY > 300;
+};
+
+// Add scroll listener in onMounted
+onMounted(() => {
+    // Get genres
+    getMovieGenres();
+
+    // Populate rating
+    for(let i=0; i<=9; i++){
+        if(i < 9){
+            dropdowns.value.rating.values.push(i+1+'+');
+        } else {
+            dropdowns.value.rating.values.push('10');
+        }
+    }
+
+    // Calculate years
+    calcYears();
+
+    // Get languages
+    getLanguages();
+    
+    // Set initial meta tags
+    updateMetaTags();
+    
+    // Add scroll listener for back to top button
+    if (typeof window !== 'undefined') {
+        window.addEventListener('scroll', handleScroll);
+    }
+});
+
+// Clean up event listeners on unmount
+onUnmounted(() => {
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('scroll', handleScroll);
+    }
+});
+
 </script>
 
 <template>
@@ -1011,7 +1050,27 @@ function resetFilters() {
         </div>
         <!--content end-->
 
-
+        <!-- Back to Top Button -->
+        <transition name="fade">
+            <button 
+                v-show="showBackToTop"
+                @click="scrollToTop"
+                class="back-to-top-btn"
+                aria-label="Back to top"
+                title="Back to top"
+            >
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="24" 
+                    height="24" 
+                    fill="currentColor" 
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                >
+                    <path fill-rule="evenodd" d="M8 15a.5.5 0 0 0 .5-.5V2.707l3.146 3.147a.5.5 0 0 0 .708-.708l-4-4a.5.5 0 0 0-.708 0l-4 4a.5.5 0 1 0 .708.708L7.5 2.707V14.5a.5.5 0 0 0 .5.5"/>
+                </svg>
+            </button>
+        </transition>
 
     </main>
 
@@ -1100,6 +1159,50 @@ function resetFilters() {
     .btn,
     .dropdown-item {
         transition: outline 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    /* Back to top button */
+    .back-to-top-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: #0d6efd;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        transition: all 0.3s ease;
+        z-index: 1000;
+    }
+
+    .back-to-top-btn:hover {
+        background-color: #0b5ed7;
+        transform: translateY(-5px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+    }
+
+    .back-to-top-btn:active {
+        transform: translateY(-2px);
+    }
+
+    .back-to-top-btn:focus-visible {
+        outline: 3px solid #ffffff;
+        outline-offset: 2px;
+    }
+
+    /* Fade transition for back-to-top button */
+    .fade-enter-active, .fade-leave-active {
+        transition: opacity 0.3s ease;
+    }
+
+    .fade-enter-from, .fade-leave-to {
+        opacity: 0;
     }
 
 </style>
