@@ -1,7 +1,7 @@
 <template>
   <!--navbar-->
   <div class="bg-primary d-flex justify-content-center p-2">
-      <a href="/"><img src="/assets/logo.png" alt="logo" width="200" height="102" class="d-inline-block align-text-top"></a>
+      <a href="/showmeamovie/"><img src="/assets/logo.png" alt="logo" width="200" height="102" class="d-inline-block align-text-top"></a>
   </div>
   <!--navbar end-->
   <div>
