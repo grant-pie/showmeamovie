@@ -13,7 +13,7 @@
       <img src="/assets/logo.png" alt="logo" width="100" height="51" class="d-inline-block align-text-top">
 
       <p class="small text-muted mt-2">
-          <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" class="text-muted">
+          <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" class="text-light">
               Powered by TMDB
           </a>
       </p>
